@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from gitlab_tools.cli import _configure_standard_streams
 from gitlab_tools.commands.milestones.command import run_init_config as run_milestone_init_config
 from gitlab_tools.commands.repositories.command import run_export as run_repository_export
 from gitlab_tools.commands.repositories.command import run_init_config as run_repository_init_config
@@ -20,12 +22,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class CommandLineTests(unittest.TestCase):
-    def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_cli(
+        self,
+        *args: str,
+        env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, "-m", "gitlab_tools", *args],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            env=env,
             check=False,
         )
 
@@ -90,7 +98,14 @@ class CommandLineTests(unittest.TestCase):
                 directory,
             ]
             processes = [
-                subprocess.Popen(command, cwd=PROJECT_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                subprocess.Popen(
+                    command,
+                    cwd=PROJECT_ROOT,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                )
                 for _ in range(2)
             ]
             results = [process.communicate(timeout=30) + (process.returncode,) for process in processes]
@@ -124,6 +139,38 @@ class CommandLineTests(unittest.TestCase):
             self.assertEqual(1, second.returncode)
             self.assertEqual("keep\n", config_file.read_text(encoding="utf-8"))
             self.assertIn("已存在", second.stderr)
+
+    def test_cli_uses_utf8_when_inherited_stream_encoding_is_cp1252(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "cp1252"
+
+            first = self.run_cli("milestones", "init-config", "--directory", directory, env=env)
+            second = self.run_cli("milestones", "init-config", "--directory", directory, env=env)
+
+        self.assertEqual(0, first.returncode, first.stderr)
+        self.assertIn("已创建", first.stdout)
+        self.assertEqual(1, second.returncode)
+        self.assertIn("已存在", second.stderr)
+
+    def test_standard_stream_configuration_supports_embedded_streams(self) -> None:
+        class RecordingStream:
+            options: dict[str, str] | None = None
+
+            def reconfigure(self, **kwargs: str) -> None:
+                self.options = kwargs
+
+        supported_stream = RecordingStream()
+        with (
+            patch("gitlab_tools.cli.sys.stdout", supported_stream),
+            patch("gitlab_tools.cli.sys.stderr", object()),
+        ):
+            _configure_standard_streams()
+
+        self.assertEqual(
+            {"encoding": "utf-8", "errors": "backslashreplace"},
+            supported_stream.options,
+        )
 
     def test_init_config_write_failure_removes_partial_files_for_all_features(self) -> None:
         real_open = Path.open
