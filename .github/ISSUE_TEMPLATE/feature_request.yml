@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a focused improvement to gitlab-tools
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the GitLab workflow you need, not only a proposed implementation. Use synthetic organization and project names.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What task is difficult or repetitive today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should the user be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example command or output
+      description: Use `gitlab.example.com`, `example-org`, and synthetic data.
+      render: text
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional workarounds or related tools.
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - label: I considered Windows and offline environments.
+        - label: I can help test or implement this change.

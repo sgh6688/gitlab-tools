@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible problem in gitlab-tools
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Use synthetic names and redact tokens, private URLs, internal paths, and exported data.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output from `python -m pip show gitlab-tools`, or the commit SHA.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature
+      options:
+        - Milestone export
+        - Repository export
+        - Installation or configuration
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, and Git version when relevant.
+      placeholder: "Windows 11, Python 3.11.9, Git 2.50"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible example with synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, private GitLab URLs, organization/project names, usernames, and internal paths before pasting logs.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials and private organization data from this report.
+          required: true
+        - label: This is not a security vulnerability. Security reports use the private advisory link.
+          required: true

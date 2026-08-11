@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile source and tests
+        run: python -m compileall -q gitlab_tools tests
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+  wheel:
+    name: Build and install Wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build backend
+        run: python -m pip install "setuptools>=68"
+
+      - name: Build Wheel
+        run: python -m pip wheel --no-deps --wheel-dir dist .
+
+      - name: Inspect Wheel contents
+        shell: python
+        run: |
+          import zipfile
+          from pathlib import Path
+
+          wheels = list(Path("dist").glob("gitlab_tools-*.whl"))
+          assert len(wheels) == 1, wheels
+          required = {
+              "gitlab_tools/templates/gitlab.example.txt",
+              "gitlab_tools/templates/milestones.example.txt",
+              "gitlab_tools/templates/repositories.example.txt",
+              "gitlab_tools/templates/run_milestones_export.bat",
+              "gitlab_tools/templates/run_repositories_export.bat",
+          }
+          with zipfile.ZipFile(wheels[0]) as archive:
+              missing = required.difference(archive.namelist())
+          assert not missing, sorted(missing)
+
+      - name: Install Wheel without an index
+        run: |
+          python -m venv verify-venv
+          verify-venv/bin/python -m pip --isolated install --no-index dist/gitlab_tools-*.whl
+
+      - name: Verify installed commands and templates
+        run: |
+          verify-venv/bin/gitlab-tools --help
+          verify-venv/bin/gitlab-tools milestones init-config --directory verify-milestones
+          verify-venv/bin/gitlab-tools repositories init-config --directory verify-repositories
+          test -f verify-milestones/milestones.config.txt
+          test -f verify-milestones/run_milestones_export.bat
+          test -f verify-repositories/gitlab.config.txt
+          test -f verify-repositories/repositories.config.txt
+          test -f verify-repositories/run_repositories_export.bat

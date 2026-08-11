@@ -1,0 +1,11 @@
+Repositories/
+└── example-org/
+    └── platform/
+        ├── api-service/
+        │   ├── .git/
+        │   ├── README.md
+        │   └── src/
+        └── web-client/
+            ├── .git/
+            ├── README.md
+            └── src/

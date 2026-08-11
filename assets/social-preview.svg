@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">gitlab-tools social preview</title>
+  <desc id="desc">Export GitLab milestones and issues to Markdown, and clone projects and groups as Git working trees.</desc>
+  <rect width="1280" height="640" fill="#101419"/>
+  <rect x="0" y="0" width="12" height="640" fill="#FC6D26"/>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="72" y="82" fill="#FC8D4D" font-size="22" font-weight="700" letter-spacing="3">OPEN SOURCE CLI · PYTHON 3.11+</text>
+    <text x="68" y="190" fill="#F6F8FA" font-size="88" font-weight="800" letter-spacing="-3">gitlab-tools</text>
+    <text x="72" y="246" fill="#AEB8C4" font-size="27">Portable exports for GitLab planning and source code</text>
+
+    <g transform="translate(72 318)">
+      <text x="0" y="0" fill="#F6F8FA" font-size="25" font-weight="700">Milestones + Issues</text>
+      <path d="M250 -8 H326 M313 -20 L328 -8 L313 4" fill="none" stroke="#FC6D26" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="350" y="0" fill="#D9E0E7" font-size="25">Markdown</text>
+
+      <text x="0" y="72" fill="#F6F8FA" font-size="25" font-weight="700">Projects + Groups</text>
+      <path d="M250 64 H326 M313 52 L328 64 L313 76" fill="none" stroke="#FC6D26" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="350" y="72" fill="#D9E0E7" font-size="25">Git working trees</text>
+    </g>
+
+    <rect x="72" y="468" width="624" height="76" rx="8" fill="#171D24" stroke="#303A46" stroke-width="2"/>
+    <circle cx="106" cy="506" r="6" fill="#FC6D26"/>
+    <text x="128" y="514" fill="#D7DEE6" font-family="Menlo, Consolas, monospace" font-size="21">gitlab-tools repositories export</text>
+    <text x="72" y="596" fill="#7F8B98" font-size="20">WINDOWS · OFFLINE INSTALL · MIT LICENSE</text>
+
+    <g transform="translate(850 122)" font-family="Menlo, Consolas, monospace">
+      <rect x="0" y="0" width="354" height="396" rx="14" fill="#151A20" stroke="#303A46" stroke-width="2"/>
+      <rect x="0" y="0" width="354" height="52" rx="14" fill="#1B222A"/>
+      <path d="M0 38 H354 V52 H0 Z" fill="#1B222A"/>
+      <circle cx="28" cy="26" r="6" fill="#FC6D26"/>
+      <circle cx="50" cy="26" r="6" fill="#6B7580"/>
+      <circle cx="72" cy="26" r="6" fill="#6B7580"/>
+
+      <g font-size="20">
+        <text x="30" y="100" fill="#FC8D4D">example-org/</text>
+        <path d="M42 118 V286 M42 150 H72 M42 220 H72 M42 286 H72" fill="none" stroke="#46515D" stroke-width="2"/>
+        <text x="80" y="158" fill="#DCE3EA">platform/</text>
+        <path d="M94 176 V226 M94 194 H124 M94 226 H124" fill="none" stroke="#46515D" stroke-width="2"/>
+        <text x="132" y="202" fill="#AEB8C4">api-service/</text>
+        <text x="132" y="234" fill="#AEB8C4">web-client/</text>
+        <text x="80" y="292" fill="#DCE3EA">shared/</text>
+        <path d="M94 310 H124" fill="none" stroke="#46515D" stroke-width="2"/>
+        <text x="132" y="318" fill="#AEB8C4">common-lib/</text>
+      </g>
+
+      <rect x="28" y="348" width="298" height="28" rx="5" fill="#202830"/>
+      <rect x="28" y="348" width="224" height="28" rx="5" fill="#FC6D26"/>
+      <text x="140" y="369" fill="#101419" font-size="15" font-weight="700" text-anchor="middle">namespace preserved</text>
+    </g>
+  </g>
+</svg>

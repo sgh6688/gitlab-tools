@@ -5,11 +5,29 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gitlab-tools"
 version = "0.3.1"
-description = "Extensible GitLab automation and export tools"
+description = "Export GitLab milestones and issues to Markdown, and clone projects or groups as Git working trees"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = []
+keywords = ["gitlab", "export", "backup", "milestones", "issues", "repositories"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+Homepage = "https://github.com/sgh6688/gitlab-tools"
+Documentation = "https://github.com/sgh6688/gitlab-tools/blob/main/USER_GUIDE.md"
+Issues = "https://github.com/sgh6688/gitlab-tools/issues"
+Releases = "https://github.com/sgh6688/gitlab-tools/releases"
 
 [project.scripts]
 gitlab-tools = "gitlab_tools.cli:main"

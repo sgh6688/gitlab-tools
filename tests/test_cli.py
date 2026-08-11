@@ -5,11 +5,14 @@ import sys
 import tempfile
 import unittest
 from argparse import Namespace
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 from gitlab_tools.commands.milestones.command import run_init_config as run_milestone_init_config
+from gitlab_tools.commands.repositories.command import run_export as run_repository_export
 from gitlab_tools.commands.repositories.command import run_init_config as run_repository_init_config
 
 
@@ -198,22 +201,21 @@ class CommandLineTests(unittest.TestCase):
             feature_config = config_dir / "repositories.config.txt"
             gitlab_config.write_text("gitlab_url=https://gitlab.example.com\n", encoding="utf-8")
             feature_config.write_text("projects=team/tool\n", encoding="utf-8")
-            config_dir.chmod(0o500)
-            try:
-                result = self.run_cli(
-                    "repositories",
-                    "export",
-                    "--gitlab-config",
-                    str(gitlab_config),
-                    "--config",
-                    str(feature_config),
-                )
-            finally:
-                config_dir.chmod(0o700)
+            args = Namespace(gitlab_config=str(gitlab_config), config=str(feature_config))
+            stderr = StringIO()
 
-        self.assertEqual(3, result.returncode)
-        self.assertIn("无法创建日志文件", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
+            with (
+                patch(
+                    "gitlab_tools.commands.repositories.command.setup_logging",
+                    side_effect=OSError("simulated log write failure"),
+                ),
+                redirect_stderr(stderr),
+            ):
+                result = run_repository_export(args)
+
+        self.assertEqual(3, result)
+        self.assertIn("无法创建日志文件", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
 
 
 if __name__ == "__main__":

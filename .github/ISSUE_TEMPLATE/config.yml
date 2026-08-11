@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Private security report
+    url: https://github.com/sgh6688/gitlab-tools/security/advisories/new
+    about: Report vulnerabilities and credential-exposure risks privately.
+  - name: User guide
+    url: https://github.com/sgh6688/gitlab-tools/blob/main/USER_GUIDE.md
+    about: Check installation, configuration, and troubleshooting steps before filing an Issue.
