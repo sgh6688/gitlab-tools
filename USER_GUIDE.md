@@ -61,22 +61,70 @@ git version 2.49.0.windows.1
 - Python 必须是 3.11 或更高版本。
 - Git 能正常显示版本号。
 
-如果提示“不是内部或外部命令”：
+如果提示“不是内部或外部命令”，请根据电脑能否访问互联网选择下面的安装方式。
 
-- Python：从 <https://www.python.org/downloads/windows/> 安装。安装时勾选 `Add Python to PATH`。
-- Git：从 <https://git-scm.com/download/win> 安装。安装过程保持默认选项即可。
+### 联网电脑安装 Python 和 Git
 
-安装完成后，关闭命令提示符，再重新打开并检查版本。
+- Python：从 <https://www.python.org/downloads/windows/> 下载 Python 3.11 或更高版本。安装时勾选 `Add Python to PATH`。
+- Git：从 <https://git-scm.com/download/win> 下载并安装，安装选项保持默认即可。
+
+### 断网电脑安装 Python 和 Git
+
+这里的“断网”是指不能访问互联网，但电脑仍须能访问公司内网 GitLab，否则无法导出项目。
+
+先在一台联网电脑上准备：
+
+1. Python 3.11 或更高版本的 Windows 64 位完整安装程序，例如 `python-3.11.x-amd64.exe`。
+2. Git for Windows 64 位完整安装程序，例如 `Git-x.x.x-64-bit.exe`。
+3. `gitlab-tools` 的 Wheel 安装包，例如 `gitlab_tools-0.3.0-py3-none-any.whl`。
+
+把这三个文件通过公司允许的文件交换方式复制到断网电脑。先安装 Python，再安装 Git。安装 Python 时勾选 `Add Python to PATH`；Git 保持默认安装选项。
+
+安装完成后，关闭命令提示符，再重新打开并检查版本：
+
+```bat
+py --version
+git --version
+```
 
 ## 三、安装 gitlab-tools
 
-管理员或工具提供方通常会提供一个文件，例如：
+### Wheel 文件是什么
+
+工具提供方通常会给你一个这样的文件：
 
 ```text
 gitlab_tools-0.3.0-py3-none-any.whl
 ```
 
-把该文件放到一个固定目录，例如：
+这是 Python 的 Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
+
+- `gitlab_tools`：软件包名称。
+- `0.3.0`：版本号。
+- `py3`：适用于 Python 3。
+- `none-any`：不依赖特定操作系统和 CPU。
+- `.whl`：Python 可直接安装的软件包格式。
+
+本工具没有第三方 Python 运行时依赖，因此离线电脑只需要这一个 Wheel，不需要再下载其他 Python 包。
+
+### 联网安装
+
+电脑能访问 GitHub 时，可以直接执行：
+
+```bat
+py -m pip install "git+https://github.com/sgh6688/gitlab-tools.git@main"
+```
+
+如果工具提供方已经给了 `.whl`，即使电脑联网，也建议安装指定版本的 Wheel，结果更稳定：
+
+```bat
+cd /d D:\GitLabTools
+py -m pip install gitlab_tools-0.3.0-py3-none-any.whl
+```
+
+### 完全离线安装
+
+把 Wheel 放到断网电脑的固定目录，例如：
 
 ```text
 D:\GitLabTools
@@ -86,21 +134,46 @@ D:\GitLabTools
 
 ```bat
 cd /d D:\GitLabTools
+py -m pip install --no-index .\gitlab_tools-0.3.0-py3-none-any.whl
 ```
 
-然后安装：
+`--no-index` 表示禁止 pip 访问互联网，只从当前 Wheel 安装。
+
+如果要重新安装同一版本：
 
 ```bat
-py -m pip install gitlab_tools-0.3.0-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.0-py3-none-any.whl
 ```
 
-如果拿到的是完整源码目录，而不是 `.whl` 文件，请进入源码目录后执行：
+离线环境不建议直接从源码安装，因为源码构建工具可能不齐全。请优先使用管理员提供的 Wheel。
+
+### 工具提供方如何准备离线包
+
+在一台联网且已经获取源码的电脑上执行：
 
 ```bat
-py -m pip install .
+cd /d D:\workspace\gitlab-tools
+py -m pip wheel --no-deps --wheel-dir offline-package .
 ```
 
-安装后检查：
+生成结果类似：
+
+```text
+offline-package\gitlab_tools-0.3.0-py3-none-any.whl
+```
+
+建议把下面三个文件放在同一个离线交付目录中：
+
+```text
+GitLabTools-Offline\
+  python-3.11.x-amd64.exe
+  Git-x.x.x-64-bit.exe
+  gitlab_tools-0.3.0-py3-none-any.whl
+```
+
+然后通过公司允许的介质或内部文件传输系统交给断网环境用户。由于本工具没有第三方 Python 运行时依赖，不需要额外执行 `pip download`。
+
+### 检查安装结果
 
 ```bat
 py -m gitlab_tools --help

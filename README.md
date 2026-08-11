@@ -11,7 +11,7 @@
 | `milestones export` | 导出 group/project 的 Milestone 和 Issue Markdown |
 | `repositories export` | 导出单个 project 或 group 下所有 project 的代码 |
 
-运行环境：Windows 10、Python 3.11+、Git 命令行。Python 运行时无第三方依赖。
+运行环境：Windows 10、Python 3.11+、Git 命令行。Python 运行时无第三方依赖。联网和断网安装步骤均见简明用户手册。
 
 ```bat
 py -m gitlab_tools --help
@@ -223,7 +223,7 @@ copy configs\milestones.example.txt milestones.config.txt
 py -m gitlab_tools milestones export --config milestones.config.txt
 ```
 
-也可运行 `run_milestones_export.bat`。日志为配置文件同级的 `milestones-export.log`。
+源码仓库中的 Windows 脚本位于 `scripts\windows\`。也可运行 `scripts\windows\run_milestones_export.bat`；日志为配置文件同级的 `milestones-export.log`。
 
 # 项目结构
 
@@ -246,6 +246,10 @@ configs/
   gitlab.example.txt
   milestones.example.txt
   repositories.example.txt
+scripts/
+  windows/
+    run_milestones_export.bat
+    run_repositories_export.bat
 tests/
 ```
 

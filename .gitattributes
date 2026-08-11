@@ -1,0 +1,2 @@
+# Windows command scripts use native CRLF line endings. Treat CR at EOL as part of the line ending.
+*.bat text eol=crlf whitespace=trailing-space,space-before-tab,cr-at-eol
