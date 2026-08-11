@@ -1,242 +1,186 @@
-# GitLab Repository 源码导出工具：简明用户手册
+# GitLab Tools 简明用户手册
 
-本手册面向第一次使用本工具的 Windows 用户。按顺序操作即可，不需要编写代码。
+本工具目前有两项功能：
 
-## 一、开始前准备
+| 功能 | 命令 | 输出 |
+|---|---|---|
+| 导出 Milestone | `milestones export` | Milestone 和 Issue 的 Markdown 文件 |
+| 导出项目源码 | `repositories export` | 可直接浏览和使用的普通 Git 工作区 |
 
-请准备以下信息：
+下面按“检查环境、安装工具、选择功能、填写配置、执行导出”的顺序说明。示例以 Windows 为主。
 
-1. 公司 GitLab 地址，例如 `https://gitlab.example.com`。
-2. 要导出的项目或群组地址。
-3. GitLab Access Token。公开项目可以不填；公司内部项目通常需要 Token。
-4. 一台可以访问公司 GitLab 的 Windows 10 或更高版本电脑。
+## 1. 使用前准备
 
-### 如何找到项目路径
+需要准备：
 
-打开项目网页。假设浏览器地址是：
+1. Windows 10 或更高版本电脑。
+2. Python 3.11 或更高版本。
+3. Git 命令行。
+4. 公司 GitLab 地址，例如 `https://gitlab.example.com`。
+5. GitLab Access Token。
+6. 电脑能够访问目标 GitLab。
 
-```text
-https://gitlab.example.com/dept/platform/project-a
-```
+“断网环境”可以不能访问互联网，但必须能够访问公司内网 GitLab，否则无法导出数据和代码。
 
-项目路径就是：
+## 2. 检查 Python 和 Git
 
-```text
-dept/platform/project-a
-```
-
-群组路径的找法相同。例如：
-
-```text
-https://gitlab.example.com/dept/platform
-```
-
-群组路径就是：
-
-```text
-dept/platform
-```
-
-## 二、检查电脑环境
-
-按 `Win + R`，输入 `cmd`，按回车。依次执行：
+按 `Win + R`，输入 `cmd`，按回车。执行：
 
 ```bat
 py --version
-```
-
-```bat
 git --version
 ```
 
-正常情况下会看到类似内容：
+正常结果类似：
 
 ```text
 Python 3.11.9
 git version 2.49.0.windows.1
 ```
 
-要求：
+Python 版本必须是 3.11 或更高。
 
-- Python 必须是 3.11 或更高版本。
-- Git 能正常显示版本号。
+### 联网电脑安装依赖
 
-如果提示“不是内部或外部命令”，请根据电脑能否访问互联网选择下面的安装方式。
+- Python：<https://www.python.org/downloads/windows/>
+- Git：<https://git-scm.com/download/win>
 
-### 联网电脑安装 Python 和 Git
+安装 Python 时勾选 `Add Python to PATH`。Git 保持默认安装选项即可。
 
-- Python：从 <https://www.python.org/downloads/windows/> 下载 Python 3.11 或更高版本。安装时勾选 `Add Python to PATH`。
-- Git：从 <https://git-scm.com/download/win> 下载并安装，安装选项保持默认即可。
+### 断网电脑安装依赖
 
-### 断网电脑安装 Python 和 Git
+在联网电脑上下载并带入断网环境：
 
-这里的“断网”是指不能访问互联网，但电脑仍须能访问公司内网 GitLab，否则无法导出项目。
-
-先在一台联网电脑上准备：
-
-1. Python 3.11 或更高版本的 Windows 64 位完整安装程序，例如 `python-3.11.x-amd64.exe`。
-2. Git for Windows 64 位完整安装程序，例如 `Git-x.x.x-64-bit.exe`。
-3. `gitlab-tools` 的 Wheel 安装包，例如 `gitlab_tools-0.3.0-py3-none-any.whl`。
-
-把这三个文件通过公司允许的文件交换方式复制到断网电脑。先安装 Python，再安装 Git。安装 Python 时勾选 `Add Python to PATH`；Git 保持默认安装选项。
-
-安装完成后，关闭命令提示符，再重新打开并检查版本：
-
-```bat
-py --version
-git --version
+```text
+python-3.11.x-amd64.exe
+Git-x.x.x-64-bit.exe
 ```
 
-## 三、安装 gitlab-tools
+先安装 Python，再安装 Git。安装后关闭命令提示符，重新打开并再次检查版本。
+
+## 3. 安装 gitlab-tools
 
 ### Wheel 文件是什么
 
-工具提供方通常会给你一个这样的文件：
+工具通常以这个文件交付：
 
 ```text
-gitlab_tools-0.3.0-py3-none-any.whl
+gitlab_tools-0.3.1-py3-none-any.whl
 ```
 
-这是 Python 的 Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
+它是 Python Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
 
 - `gitlab_tools`：软件包名称。
-- `0.3.0`：版本号。
+- `0.3.1`：版本号。
 - `py3`：适用于 Python 3。
 - `none-any`：不依赖特定操作系统和 CPU。
 - `.whl`：Python 可直接安装的软件包格式。
 
-本工具没有第三方 Python 运行时依赖，因此离线电脑只需要这一个 Wheel，不需要再下载其他 Python 包。
+本工具没有第三方 Python 运行时依赖，离线安装只需要这一个 Wheel。
 
 ### 联网安装
 
-电脑能访问 GitHub 时，可以直接执行：
+GitHub 仓库为 Public，或当前账号已有访问权限时，可以直接从 GitHub 源码安装：
 
 ```bat
 py -m pip install "git+https://github.com/sgh6688/gitlab-tools.git@main"
 ```
 
-如果工具提供方已经给了 `.whl`，即使电脑联网，也建议安装指定版本的 Wheel，结果更稳定：
+如果已经拿到 Wheel，推荐安装固定版本：
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install gitlab_tools-0.3.0-py3-none-any.whl
+py -m pip install .\gitlab_tools-0.3.1-py3-none-any.whl
 ```
 
 ### 完全离线安装
 
-把 Wheel 放到断网电脑的固定目录，例如：
+把 Wheel 复制到断网电脑，例如放在：
 
 ```text
 D:\GitLabTools
 ```
 
-在命令提示符中执行：
+执行：
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install --no-index .\gitlab_tools-0.3.0-py3-none-any.whl
+py -m pip install --no-index .\gitlab_tools-0.3.1-py3-none-any.whl
 ```
 
-`--no-index` 表示禁止 pip 访问互联网，只从当前 Wheel 安装。
+`--no-index` 表示禁止 pip 访问互联网。
 
-如果要重新安装同一版本：
+重新安装同一版本：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.0-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.1-py3-none-any.whl
 ```
-
-离线环境不建议直接从源码安装，因为源码构建工具可能不齐全。请优先使用管理员提供的 Wheel。
-
-### 工具提供方如何准备离线包
-
-在一台联网且已经获取源码的电脑上执行：
-
-```bat
-cd /d D:\workspace\gitlab-tools
-py -m pip wheel --no-deps --wheel-dir offline-package .
-```
-
-生成结果类似：
-
-```text
-offline-package\gitlab_tools-0.3.0-py3-none-any.whl
-```
-
-建议把下面三个文件放在同一个离线交付目录中：
-
-```text
-GitLabTools-Offline\
-  python-3.11.x-amd64.exe
-  Git-x.x.x-64-bit.exe
-  gitlab_tools-0.3.0-py3-none-any.whl
-```
-
-然后通过公司允许的介质或内部文件传输系统交给断网环境用户。由于本工具没有第三方 Python 运行时依赖，不需要额外执行 `pip download`。
 
 ### 检查安装结果
 
 ```bat
+py -m pip show gitlab-tools
 py -m gitlab_tools --help
 ```
 
-只要帮助信息中出现 `repositories`，安装就成功了。
-
-## 四、创建配置文件
-
-建议单独创建一个日常使用目录：
-
-```bat
-mkdir D:\GitLabRepositoryExport
-cd /d D:\GitLabRepositoryExport
-```
-
-生成配置文件：
-
-```bat
-py -m gitlab_tools repositories init-config
-```
-
-执行后会生成三个文件：
+`pip show` 应显示当前安装版本；工具帮助中应同时出现：
 
 ```text
-gitlab.config.txt
-repositories.config.txt
-run_repositories_export.bat
+milestones
+repositories
 ```
 
-如果提示文件已经存在，工具不会覆盖原文件。这是正常的保护措施。
+## 4. GitLab 地址、项目路径和 Token
 
-## 五、填写 GitLab 连接信息
+### GitLab 地址
 
-用记事本打开 `gitlab.config.txt`。
-
-### 最简单的填写方法
-
-把内容改成下面的形式：
+假设项目网页是：
 
 ```text
-gitlab_url=https://gitlab.example.com
-token=在这里填写你的Token
-token_env_var=GITLAB_TOKEN
-request_timeout_seconds=30
-page_size=100
-verify_ssl=true
+https://gitlab.example.com/dept/platform/project-a
 ```
 
-注意：
+那么：
 
-- `gitlab_url` 改成公司的真实 GitLab 地址。
-- 地址末尾不要写 `/api/v4`。
-- 地址末尾也不需要 `/`。
-- `token` 后面直接填写 Token，中间不要加引号或空格。
-- 该文件含有敏感信息，不要发给别人，也不要提交到 Git 仓库。
+```text
+GitLab 地址：https://gitlab.example.com
+项目路径：dept/platform/project-a
+群组路径：dept/platform
+```
 
-### 更安全的 Token 使用方法
+GitLab 地址不要带 `/api/v4`。
 
-如果不希望把 Token 写入文件，请保持：
+### Token 权限
+
+Milestone 导出通常需要：
+
+```text
+read_api
+```
+
+Repository HTTP 导出通常还需要：
+
+```text
+read_repository
+```
+
+只授予读取权限，不要增加写入、删除等无关权限。
+
+### Token 的两种填写方法
+
+最简单的方法是在配置文件中填写：
+
+```text
+token=你的Token
+```
+
+配置文件含有敏感信息，不要发送给别人，也不要提交到 Git 仓库。
+
+更安全的方法是保持：
 
 ```text
 token=
+token_env_var=GITLAB_TOKEN
 ```
 
 每次运行前，在同一个命令提示符窗口中执行：
@@ -245,22 +189,170 @@ token=
 set "GITLAB_TOKEN=你的Token"
 ```
 
-然后继续在该窗口中运行导出命令。关闭窗口后，这个临时环境变量会自动失效。
+关闭窗口后，这个临时环境变量会失效。
 
-### Token 权限建议
+# 功能一：导出 Milestone 和 Issue
 
-私有项目通常需要以下只读权限：
+该功能导出指定 group/project 下的 Milestone，以及每个 Milestone 关联的 Issue。结果为 Markdown 文件，不导出项目源码。
 
-- `read_api`
-- `read_repository`
+## 5.1 创建 Milestone 配置
 
-不要给 Token 增加写入仓库、删除项目等无关权限。
+建议创建独立目录：
 
-## 六、填写要导出的项目或群组
+```bat
+mkdir D:\GitLabToolsConfig\Milestones
+cd /d D:\GitLabToolsConfig\Milestones
+```
 
-用记事本打开 `repositories.config.txt`。
+初始化：
 
-### 情况一：导出一个项目
+```bat
+py -m gitlab_tools milestones init-config
+```
+
+会生成：
+
+```text
+milestones.config.txt
+run_milestones_export.bat
+```
+
+工具不会覆盖已有文件。
+
+## 5.2 填写 Milestone 配置
+
+用记事本打开 `milestones.config.txt`：
+
+```bat
+notepad milestones.config.txt
+```
+
+示例：
+
+```text
+gitlab_url=https://gitlab.example.com
+token=
+token_env_var=GITLAB_TOKEN
+
+output_dir=D:\GitLabExport\Milestones
+
+request_timeout_seconds=30
+page_size=100
+verify_ssl=true
+
+groups=dept/platform
+projects=dept/platform/project-a
+```
+
+说明：
+
+- `groups`：导出群组 Milestone。
+- `projects`：导出项目 Milestone。
+- 两者可同时填写，多个目标用英文逗号分隔。
+- 不使用的一项保持空值，例如 `groups=`。
+
+只导出一个项目：
+
+```text
+groups=
+projects=dept/platform/project-a
+```
+
+只导出一个群组：
+
+```text
+groups=dept/platform
+projects=
+```
+
+## 5.3 执行 Milestone 导出
+
+日常使用可双击：
+
+```text
+run_milestones_export.bat
+```
+
+第一次运行或排错时，建议在命令提示符中执行：
+
+```bat
+cd /d D:\GitLabToolsConfig\Milestones
+run_milestones_export.bat
+```
+
+也可以直接执行：
+
+```bat
+py -m gitlab_tools milestones export --config milestones.config.txt
+```
+
+## 5.4 查看 Milestone 结果
+
+输出目录示例：
+
+```text
+D:\GitLabExport\Milestones\
+  group__dept__platform\
+    index.md
+    20261231_版本名称\
+      milestone.md
+      issues\
+        001_iid-123_Issue标题.md
+```
+
+日志位于配置文件同级目录：
+
+```text
+milestones-export.log
+```
+
+# 功能二：导出 Repository 项目源码
+
+该功能通过 Git clone 导出项目，保留 `.git`、完整历史和 GitLab namespace 层级，不生成压缩包。
+
+## 6.1 创建 Repository 配置
+
+建议创建独立目录：
+
+```bat
+mkdir D:\GitLabToolsConfig\Repositories
+cd /d D:\GitLabToolsConfig\Repositories
+```
+
+初始化：
+
+```bat
+py -m gitlab_tools repositories init-config
+```
+
+会生成：
+
+```text
+gitlab.config.txt
+repositories.config.txt
+run_repositories_export.bat
+```
+
+工具不会覆盖已有文件。
+
+## 6.2 填写 GitLab 连接配置
+
+打开 `gitlab.config.txt`：
+
+```text
+gitlab_url=https://gitlab.example.com
+token=
+token_env_var=GITLAB_TOKEN
+request_timeout_seconds=30
+page_size=100
+verify_ssl=true
+```
+
+## 6.3 填写 Repository 导出配置
+
+打开 `repositories.config.txt`。
+
+导出一个项目：
 
 ```text
 output_dir=D:\GitLabExport\Repositories
@@ -271,15 +363,13 @@ clone_protocol=http
 existing=skip
 ```
 
-### 情况二：一次导出多个项目
-
-项目之间用英文逗号分隔：
+导出多个项目时，用英文逗号分隔：
 
 ```text
 projects=dept/platform/project-a,dept/platform/project-b
 ```
 
-### 情况三：导出整个群组
+导出整个群组及其子群组项目：
 
 ```text
 output_dir=D:\GitLabExport\Repositories
@@ -290,15 +380,11 @@ clone_protocol=http
 existing=skip
 ```
 
-`include_subgroups=true` 表示连同子群组中的项目一起导出。
-
-如果只想导出该群组直属项目，改为：
+只导出群组直属项目：
 
 ```text
 include_subgroups=false
 ```
-
-### 其他配置先保持默认
 
 首次使用建议保持：
 
@@ -307,36 +393,18 @@ clone_protocol=http
 existing=skip
 ```
 
-含义：
+## 6.4 执行 Repository 导出
 
-- `clone_protocol=http`：使用 GitLab Token 下载，最适合新用户。
-- `existing=skip`：目标目录已经存在时跳过，不覆盖、不删除。
-
-## 七、开始导出
-
-确认三个文件位于同一目录：
-
-```text
-D:\GitLabRepositoryExport\
-  gitlab.config.txt
-  repositories.config.txt
-  run_repositories_export.bat
-```
-
-### 日常使用
-
-双击：
+日常使用可双击：
 
 ```text
 run_repositories_export.bat
 ```
 
-### 第一次运行或需要排查错误
-
-建议在命令提示符中执行，这样窗口不会自动关闭：
+第一次运行或排错时执行：
 
 ```bat
-cd /d D:\GitLabRepositoryExport
+cd /d D:\GitLabToolsConfig\Repositories
 run_repositories_export.bat
 ```
 
@@ -346,27 +414,35 @@ run_repositories_export.bat
 py -m gitlab_tools repositories export --gitlab-config gitlab.config.txt --config repositories.config.txt
 ```
 
-## 八、检查导出结果
+临时导出一个项目：
 
-如果项目路径是：
+```bat
+py -m gitlab_tools repositories export --project dept/platform/project-a
+```
+
+临时导出一个群组：
+
+```bat
+py -m gitlab_tools repositories export --group dept/platform
+```
+
+命令行出现 `--project` 或 `--group` 时，命令行目标会整体替换配置文件中的目标，避免误执行原来的批量任务。
+
+## 6.5 查看 Repository 结果
+
+项目路径：
 
 ```text
 dept/platform/project-a
 ```
 
-并且配置为：
-
-```text
-output_dir=D:\GitLabExport\Repositories
-```
-
-最终目录是：
+输出目录：
 
 ```text
 D:\GitLabExport\Repositories\dept\platform\project-a
 ```
 
-这是正常 Git 工作区，里面会有：
+里面是普通 Git 工作区：
 
 ```text
 .git
@@ -374,118 +450,82 @@ README.md
 项目源码文件
 ```
 
-运行日志位于配置文件同一目录：
+日志位于配置文件同级目录：
 
 ```text
 repositories-export.log
 ```
 
-出现问题时，先打开这个日志查看最后几行。
+## 6.6 已有目录处理方式
 
-## 九、再次运行时如何处理已有目录
+`repositories.config.txt` 中的 `existing` 有三个值：
 
-编辑 `repositories.config.txt` 中的 `existing`。
-
-### 跳过已有项目，最安全
-
-```text
-existing=skip
-```
-
-适合第一次使用和只想下载新增项目的情况。
-
-### 更新已有项目
-
-```text
-existing=update
-```
-
-工具只执行安全的 fast-forward 更新，不会强制覆盖本地历史。如果本地仓库有特殊修改、分支不匹配或远程地址不一致，该项目会报错并保留原目录。
-
-### 已存在就报错
-
-```text
-existing=fail
-```
-
-适合要求输出目录必须为空的场景。
+| 配置 | 行为 | 建议 |
+|---|---|---|
+| `skip` | 目录存在时跳过，不修改 | 首次使用推荐 |
+| `update` | 只做安全 fast-forward 更新 | 需要同步已有仓库时使用 |
+| `fail` | 目录存在时把该项目记为失败 | 要求输出目录必须为空时使用 |
 
 工具不会自动删除已有目录。
 
-## 十、使用 SSH（可选）
+## 6.7 使用 SSH（可选）
 
-只有已经配置好公司 GitLab SSH Key 的用户才使用 SSH。
-
-把配置改为：
+只有已配置 GitLab SSH Key 的用户才使用：
 
 ```text
 clone_protocol=ssh
 ```
 
-先测试 SSH 是否正常：
+先测试：
 
 ```bat
 ssh -T git@gitlab.example.com
 ```
 
-如果不知道 SSH Key 是什么，继续使用 `clone_protocol=http` 即可。
+不熟悉 SSH Key 时继续使用 `clone_protocol=http`。
 
-## 十一、常见问题
+# 7. 常见问题
 
-### 1. 提示 `py` 不是内部或外部命令
+## `py` 不是内部或外部命令
 
-Python 没安装，或者没有加入 PATH。重新安装 Python，并勾选 `Add Python to PATH`。
+Python 未安装或没有加入 PATH。重新安装并勾选 `Add Python to PATH`。
 
-### 2. 提示 `git` 不是内部或外部命令
+## `git` 不是内部或外部命令
 
-安装 Git for Windows，安装后重新打开命令提示符。
+安装 Git for Windows，然后重新打开命令提示符。
 
-### 3. 提示 `No module named gitlab_tools`
+## `No module named gitlab_tools`
 
-工具没有安装成功。进入 `.whl` 文件所在目录，重新执行：
-
-```bat
-py -m pip install --force-reinstall gitlab_tools-0.3.0-py3-none-any.whl
-```
-
-### 4. HTTP 401 或 403
-
-通常是 Token 错误、过期或权限不足。检查：
-
-- Token 是否复制完整。
-- Token 是否已过期。
-- 是否有 `read_api` 和 `read_repository` 权限。
-- 当前账号是否有权访问目标项目。
-
-### 5. 提示 project 名称不唯一
-
-不要只写项目名称，改用完整路径。
-
-错误示例：
-
-```text
-projects=project-a
-```
-
-正确示例：
-
-```text
-projects=dept/platform/project-a
-```
-
-### 6. 提示配置文件不存在
-
-先进入配置文件所在目录：
+重新安装 Wheel：
 
 ```bat
-cd /d D:\GitLabRepositoryExport
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.1-py3-none-any.whl
 ```
 
-再执行启动脚本。
+## HTTP 401 或 403
 
-### 7. 提示 SSL 证书错误
+检查：
 
-优先联系公司网络或 GitLab 管理员处理证书。只有确认是可信的公司内网 GitLab、且管理员明确允许时，才临时改为：
+- Token 是否完整、是否过期。
+- 是否有 `read_api` 权限。
+- Repository HTTP 导出是否还有 `read_repository` 权限。
+- 当前账号是否有权访问目标 group/project。
+
+## 项目名称不唯一
+
+不要只写 `project-a`，改用完整路径：
+
+```text
+dept/platform/project-a
+```
+
+## 配置文件不存在
+
+先进入该功能的配置目录，再运行 BAT；或在命令中明确指定配置路径。
+
+## SSL 证书错误
+
+优先联系 GitLab 或网络管理员。只有确认是可信内网 GitLab、且管理员明确允许时，才临时设置：
 
 ```text
 verify_ssl=false
@@ -493,45 +533,53 @@ verify_ssl=false
 
 这会降低连接安全性，不建议长期使用。
 
-### 8. 部分项目失败，但其他项目成功
+## 部分 Repository 项目失败
 
-这是工具的正常批量处理方式。打开：
+打开 `repositories-export.log`。退出码 `4` 表示批量任务执行完成，但至少有一个项目失败。
 
-```text
-repositories-export.log
-```
+## 已有 Repository 没有更新
 
-搜索“失败”或查看最后几行。退出码 `4` 表示批量任务已执行完，但至少有一个项目失败。
-
-### 9. 运行后已有项目没有变化
-
-检查是否配置了：
+如果配置是：
 
 ```text
 existing=skip
 ```
 
-如果需要更新已有项目，改为：
+工具会跳过已有目录。需要更新时改为：
 
 ```text
 existing=update
 ```
 
-## 十二、最短操作清单
+# 8. 最短操作清单
 
-已经安装 Python、Git 和工具后，只需要：
+## Milestone
 
 ```bat
-mkdir D:\GitLabRepositoryExport
-cd /d D:\GitLabRepositoryExport
+mkdir D:\GitLabToolsConfig\Milestones
+cd /d D:\GitLabToolsConfig\Milestones
+py -m gitlab_tools milestones init-config
+notepad milestones.config.txt
+run_milestones_export.bat
+```
+
+## Repository
+
+```bat
+mkdir D:\GitLabToolsConfig\Repositories
+cd /d D:\GitLabToolsConfig\Repositories
 py -m gitlab_tools repositories init-config
 notepad gitlab.config.txt
 notepad repositories.config.txt
 run_repositories_export.bat
 ```
 
-填写配置时记住三点：
+# 9. Wheel 的发布和离线分发
 
-1. GitLab 地址不要带 `/api/v4`。
-2. 项目尽量填写完整 `group/project` 路径。
-3. 第一次运行保持 `clone_protocol=http`、`existing=skip`。
+普通用户通常从以下位置获取 Wheel：
+
+1. GitHub Releases：适合公开版本下载。
+2. 公司内部制品库，如 GitLab Package Registry、Nexus 或 Artifactory。
+3. 公司允许的内部文件服务器或离线介质。
+
+本项目建议把 GitHub Releases 作为公开版本源，再把同一 Wheel 和校验文件同步到公司内网。完整发布步骤见 [RELEASE.md](RELEASE.md)。

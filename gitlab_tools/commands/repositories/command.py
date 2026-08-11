@@ -97,16 +97,22 @@ def run_init_config(args: argparse.Namespace) -> int:
         for destination_name, content in contents.items():
             destination = destination_dir / destination_name
             with destination.open("x", encoding="utf-8", newline="") as handle:
+                created.append(destination)
                 handle.write(content)
-            created.append(destination)
     except FileExistsError as exc:
         for path in reversed(created):
-            path.unlink(missing_ok=True)
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
         print(f"配置文件已存在，未覆盖任何文件: {exc.filename}", file=sys.stderr)
         return 1
     except OSError as exc:
         for path in reversed(created):
-            path.unlink(missing_ok=True)
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
         print(f"创建配置文件失败: {exc}", file=sys.stderr)
         return 3
 

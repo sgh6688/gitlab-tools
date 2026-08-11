@@ -2,7 +2,7 @@
 
 `gitlab-tools` 是一个可扩展的 GitLab 自动化与导出工具集，通过“功能域 + 动作”组织命令。
 
-第一次使用 Repository 导出，请直接阅读：[简明用户手册](USER_GUIDE.md)。手册包含环境检查、安装、配置、运行和常见问题处理。
+第一次使用请直接阅读：[简明用户手册](USER_GUIDE.md)。手册完整覆盖 Milestone 和 Repository 两项功能，以及联网/断网安装。维护者发布 Wheel 时请阅读：[发布与离线交付说明](RELEASE.md)。
 
 ## 当前功能
 
@@ -216,14 +216,19 @@ py -m gitlab_tools repositories export ^
 
 # Milestone 导出
 
-复制并修改：
+安装 Wheel 后可直接生成配置和 Windows 启动脚本：
 
 ```bat
-copy configs\milestones.example.txt milestones.config.txt
-py -m gitlab_tools milestones export --config milestones.config.txt
+py -m gitlab_tools milestones init-config
 ```
 
-源码仓库中的 Windows 脚本位于 `scripts\windows\`。也可运行 `scripts\windows\run_milestones_export.bat`；日志为配置文件同级的 `milestones-export.log`。
+编辑 `milestones.config.txt` 后运行：
+
+```bat
+run_milestones_export.bat
+```
+
+也可执行 `py -m gitlab_tools milestones export --config milestones.config.txt`。日志为配置文件同级的 `milestones-export.log`。源码仓库中的维护脚本位于 `scripts\windows\`。
 
 # 项目结构
 
@@ -260,3 +265,7 @@ py -m unittest discover -s tests -v
 ```
 
 完整设计见 [DESIGN.md](DESIGN.md)，需求基线见 [REQUIREMENTS.md](REQUIREMENTS.md)。
+
+# License
+
+本项目采用 [MIT License](LICENSE)。

@@ -4,7 +4,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from argparse import Namespace
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
+
+from gitlab_tools.commands.milestones.command import run_init_config as run_milestone_init_config
+from gitlab_tools.commands.repositories.command import run_init_config as run_repository_init_config
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -91,11 +97,61 @@ class CommandLineTests(unittest.TestCase):
             for name in ("gitlab.config.txt", "repositories.config.txt", "run_repositories_export.bat"):
                 self.assertTrue((destination / name).is_file())
 
-    def test_milestones_help_lists_export_command(self) -> None:
+    def test_milestones_help_lists_export_and_init_config_commands(self) -> None:
         result = self.run_cli("milestones", "--help")
 
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("export", result.stdout)
+        self.assertIn("init-config", result.stdout)
+
+    def test_milestones_init_config_creates_templates_without_overwrite(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory)
+            first = self.run_cli("milestones", "init-config", "--directory", str(destination))
+
+            self.assertEqual(0, first.returncode, first.stderr)
+            config_file = destination / "milestones.config.txt"
+            batch_file = destination / "run_milestones_export.bat"
+            self.assertTrue(config_file.is_file())
+            self.assertTrue(batch_file.is_file())
+            config_file.write_text("keep\n", encoding="utf-8")
+
+            second = self.run_cli("milestones", "init-config", "--directory", str(destination))
+
+            self.assertEqual(1, second.returncode)
+            self.assertEqual("keep\n", config_file.read_text(encoding="utf-8"))
+            self.assertIn("已存在", second.stderr)
+
+    def test_init_config_write_failure_removes_partial_files_for_all_features(self) -> None:
+        real_open = Path.open
+
+        class FailingWriteHandle:
+            def __init__(self, handle: Any) -> None:
+                self.handle = handle
+
+            def __enter__(self) -> "FailingWriteHandle":
+                return self
+
+            def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+                self.handle.close()
+
+            def write(self, content: str) -> int:
+                self.handle.write(content[:5])
+                self.handle.flush()
+                raise OSError("simulated disk-full failure")
+
+        def failing_open(path: Path, *args: Any, **kwargs: Any) -> Any:
+            handle = real_open(path, *args, **kwargs)
+            mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+            return FailingWriteHandle(handle) if mode == "x" else handle
+
+        for initializer in (run_milestone_init_config, run_repository_init_config):
+            with self.subTest(initializer=initializer.__module__), tempfile.TemporaryDirectory() as directory:
+                with patch.object(Path, "open", new=failing_open):
+                    result = initializer(Namespace(directory=directory))
+
+                self.assertEqual(3, result)
+                self.assertEqual([], list(Path(directory).iterdir()))
 
     def test_milestones_export_accepts_config_option(self) -> None:
         result = self.run_cli("milestones", "export", "--help")
