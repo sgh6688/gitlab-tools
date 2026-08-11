@@ -27,15 +27,17 @@ def slugify_windows_name(value: str, fallback_prefix: str) -> str:
     candidate = INVALID_CHARS_RE.sub("-", candidate).strip(" .")
     candidate = candidate.replace("\n", " ").replace("\r", " ")
     candidate = WHITESPACE_RE.sub(" ", candidate)
-    if not candidate or candidate.upper() in WINDOWS_RESERVED_NAMES:
+    candidate = candidate[:120].rstrip(" .")
+    basename = candidate.split(".", 1)[0].upper()
+    if not candidate or basename in WINDOWS_RESERVED_NAMES:
         candidate = pinyin_fallback(value, fallback_prefix=fallback_prefix)
-    return candidate[:120]
+    return candidate
 
 
 def pinyin_fallback(value: str, fallback_prefix: str) -> str:
     safe = re.sub(r"[^0-9A-Za-z_-]+", "-", value or "").strip("-").lower()
     joined = safe or fallback_prefix
-    if joined.upper() in WINDOWS_RESERVED_NAMES:
+    if joined.split(".", 1)[0].upper() in WINDOWS_RESERVED_NAMES:
         joined = f"{fallback_prefix}-{joined.lower()}"
     return joined[:120]
 

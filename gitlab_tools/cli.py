@@ -6,6 +6,7 @@ import argparse
 from collections.abc import Sequence
 
 from .commands.milestones.command import register_parser as register_milestones_parser
+from .commands.repositories.command import register_parser as register_repositories_parser
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -15,6 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True, title="commands")
     register_milestones_parser(commands)
+    register_repositories_parser(commands)
     return parser
 
 

@@ -8,3 +8,5 @@ __pycache__/
 build/
 dist/
 milestones.config.txt
+gitlab.config.txt
+repositories.config.txt

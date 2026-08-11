@@ -1,0 +1,17 @@
+# Repository 源码导出目录
+output_dir=D:\Downloads\ExportedByGitLabTools\Repositories
+
+# 默认导出范围，逗号分隔；projects 和 groups 可同时配置。
+# project 支持 ID、完整 group/project 路径或唯一的精确项目名。
+projects=dept/platform-group/project-a,dept/platform-group/project-b
+# group 支持 ID 或完整路径。
+groups=dept/shared-components
+
+# group 导出时是否包含所有子组中的项目。
+include_subgroups=true
+
+# clone 协议：http 或 ssh。
+clone_protocol=http
+
+# 已存在目标目录时：skip（跳过）、update（安全 fast-forward）、fail（记为失败）。
+existing=skip

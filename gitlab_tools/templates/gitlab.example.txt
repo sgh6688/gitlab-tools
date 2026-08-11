@@ -1,0 +1,12 @@
+# GitLab 根地址，不要带 /api/v4
+# 这是 repositories export 等功能共用的连接配置默认文件。
+gitlab_url=https://gitlab.example.com
+
+# Token 可直接填写；更推荐保持为空并通过环境变量提供。
+token=
+token_env_var=GITLAB_TOKEN
+
+# 通用 API 请求配置
+request_timeout_seconds=30
+page_size=100
+verify_ssl=true

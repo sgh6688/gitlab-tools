@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitlab-tools"
-version = "0.2.0"
+version = "0.3.0"
 description = "Extensible GitLab automation and export tools"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,3 +15,6 @@ gitlab-tools = "gitlab_tools.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["gitlab_tools*"]
+
+[tool.setuptools.package-data]
+"gitlab_tools.templates" = ["*.txt", "*.bat"]
