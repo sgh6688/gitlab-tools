@@ -4,7 +4,7 @@ import json
 import ssl
 from dataclasses import dataclass, field
 from typing import Any, Iterator
-from urllib.parse import quote, urlencode, urlsplit, urlunsplit
+from urllib.parse import urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -22,32 +22,7 @@ class GitLabClient:
         if self.base_url.lower().startswith("https://") and not self.verify_ssl:
             self.ssl_context = ssl._create_unverified_context()
 
-    def list_group_milestones(self, group_path: str) -> list[dict[str, Any]]:
-        return self._list_all_milestones(f"/groups/{self._encode_path(group_path)}/milestones")
-
-    def list_project_milestones(self, project_path: str) -> list[dict[str, Any]]:
-        return self._list_all_milestones(f"/projects/{self._encode_path(project_path)}/milestones")
-
-    def list_group_issues_for_milestone(self, group_path: str, milestone: dict[str, Any]) -> list[dict[str, Any]]:
-        issues = list(
-            self._paginate(
-                f"/groups/{self._encode_path(group_path)}/issues",
-                params={"scope": "all", "state": "all", "milestone": milestone["title"]},
-            )
-        )
-        milestone_id = milestone["id"]
-        return [issue for issue in issues if (issue.get("milestone") or {}).get("id") == milestone_id]
-
-    def list_project_issues_for_milestone(self, project_path: str, milestone: dict[str, Any]) -> list[dict[str, Any]]:
-        milestone_id = milestone["id"]
-        return list(
-            self._paginate(
-                f"/projects/{self._encode_path(project_path)}/milestones/{milestone_id}/issues",
-                params={"state": "all"},
-            )
-        )
-
-    def _paginate(self, path: str, params: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
+    def paginate(self, path: str, params: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
         page = 1
         while True:
             query = dict(params or {})
@@ -66,17 +41,6 @@ class GitLabClient:
                 break
             page = int(next_page)
 
-    def _list_all_milestones(self, path: str) -> list[dict[str, Any]]:
-        milestones_by_id: dict[int, dict[str, Any]] = {}
-        for state in ("active", "closed"):
-            for milestone in self._paginate(path, params={"state": state}):
-                milestone_id = int(milestone["id"])
-                milestones_by_id[milestone_id] = milestone
-        return list(milestones_by_id.values())
-
-    @staticmethod
-    def _encode_path(path: str) -> str:
-        return quote(path, safe="")
 
     def _request_json(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         final_url = self._append_query(url, params)
@@ -85,7 +49,7 @@ class GitLabClient:
             headers={
                 "PRIVATE-TOKEN": self.token,
                 "Accept": "application/json",
-                "User-Agent": "gitlab-milestone-exporter/0.1.0",
+                "User-Agent": "gitlab-tools/0.2.0",
             },
             method="GET",
         )

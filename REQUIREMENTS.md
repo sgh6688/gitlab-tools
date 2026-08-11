@@ -1,195 +1,107 @@
 # 需求说明
 
-## 背景
+## 1. 项目级目标
 
-在办公内网存在一个 GitLab Community Edition `v17.7.4` 服务。  
-需要一个可带入 Windows 10 内网环境、直接通过终端运行的工具，用于按指定范围导出 GitLab 的 Milestone 和 Issue 内容，方便离线归档、审阅和后续整理。
+项目名称为 **GitLab Tools**，仓库名和 Python 包名分别为：
 
-## 目标
+- GitHub 仓库：`gitlab-tools`
+- Python 包：`gitlab_tools`
+- 命令名称：`gitlab-tools`
 
-提供一个**纯 Python、无第三方依赖**的导出工具，支持用 `Personal Access Token` 访问 GitLab API，按配置导出 group/project 下的 Milestone 与对应 Issue，并生成结构化 Markdown 结果。
+项目应作为可扩展的 GitLab 工具集合，通过“功能域 + 动作”子命令运行不同功能，不得以某一个具体导出功能作为整个项目名称或顶层代码组织。
 
-## 运行环境要求
+当前交付功能为 `milestones export`。后续计划增加 `repositories export`，用于导出单个 project 或 group 下多个 project 的源码。
 
-- 操作系统：Windows 10
-- Python：3.11
-- 网络环境：办公内网，可访问 GitLab 地址
-- 依赖要求：无第三方依赖，仅使用 Python 标准库
-- 交付形式：完整工程文件夹，可压缩为一个 zip 带入办公网
+## 2. 通用要求
 
-## 输入与配置要求
+- Windows 10
+- Python 3.11+
+- 办公内网可直接运行
+- 运行时无第三方 Python 依赖
+- 支持 Personal Access Token
+- 顶层 CLI 可继续注册新功能
+- 通用 HTTP、分页、日志与工具函数可复用
+- 各功能的业务 API、配置和流程相互隔离
 
-### GitLab 访问
-
-- GitLab 地址必须可配置，默认示例地址为：
-  - `https://gitlab.example.com`
-- 认证方式使用 `Personal Access Token`
-- Token 支持两种提供方式：
-  - 直接写入配置文件
-  - 通过环境变量提供
-
-### 配置文件
-
-- 配置形式必须尽量简单
-- 使用纯文本 `key=value` 格式
-- 不依赖 YAML、JSON 或额外解析库
-
-### 导出范围
-
-- 必须支持按 `group` 路径配置导出范围
-- 必须支持按 `project` 路径配置导出范围
-- 必须允许同时配置多个 group 和多个 project
-- 范围配置不做“全量自动遍历所有可见项目”作为默认行为
-- 用户自行指定需要导出的 group/project 路径
-
-## 导出内容要求
-
-### Milestone
-
-- 导出全部 Milestone
-- 不区分 active / closed，要求都能覆盖
-
-### Issue
-
-- 导出 Milestone 下的 Issue
-- 导出 Issue 正文内容
-- 不导出 Issue 评论
-- 不导出图片和其他二进制附件
-- 保留 Issue 基本元数据，便于后续查看和追溯
-
-## 输出要求
-
-### 输出目录
-
-- 导出结果默认放到：
-  - `D:\Downloads\ExportedByGitLabTools`
-
-### 目录结构
-
-- 每个 `group` 或 `project` 生成一个独立目录
-- 每个 Milestone 生成一个独立目录
-- 每个 Milestone 目录内至少包含：
-  - `milestone.md`
-  - `issues/`
-- 每个 scope 目录下生成一个 `index.md`，便于总览
-
-### Milestone 目录命名规则
-
-Milestone 文件夹名必须以日期前缀开头，日期格式为：
+统一运行形式：
 
 ```text
-YYYYMMDD
+py -m gitlab_tools <功能域> <动作> [参数]
 ```
 
-取值逻辑：
+## 3. 当前功能：Milestone 导出
 
-1. 如果 milestone 已关闭，取关闭日期
-2. 如果 milestone 未关闭但已过期，取过期日期
-3. 如果两者都没有，取：
-   - `20269999`
+### 输入
 
-实现时的补充约定：
+- GitLab 根地址（不含 `/api/v4`）
+- Token 或 Token 环境变量名
+- 一个或多个 group 路径
+- 一个或多个 project 路径
+- 输出目录、超时、分页大小、SSL 校验开关
+- 配置使用纯文本 `key=value`，不依赖 YAML/JSON 库
 
-- 若 GitLab 接口未稳定提供单独的关闭日期字段，但 milestone 状态已为 closed，可回退使用 `updated_at`
+### 导出内容
 
-示例：
+- active 和 closed Milestone
+- Milestone 对应的 Issue
+- Issue 正文与基本元数据
+- 不导出评论、图片和其他二进制附件
+
+### 输出
+
+默认目录：
 
 ```text
-20260526_Sprint-2026-05
-20269999_长期规划
+D:\Downloads\ExportedByGitLabTools
 ```
 
-### Windows 文件名兼容
+每个 group/project 独立建目录，每个 Milestone 目录至少包含：
 
-- 目录名和文件名必须兼容 Windows
-- 非法字符要自动清洗
-- 若标题不适合直接作为文件名，要自动回退为安全名称
+```text
+index.md
+<DatePrefix>_<MilestoneName>/milestone.md
+<DatePrefix>_<MilestoneName>/issues/*.md
+```
 
-## 交互与可观测性要求
+日期前缀规则：
 
-### 终端运行
+1. 已关闭时取关闭日期；没有单独关闭时间时回退 `updated_at`；
+2. 未关闭但已到期时取 `due_date`；
+3. 其他情况取 `20269999`。
 
-- 工具必须可在终端直接运行
-- Windows 环境下默认使用 `py` 启动，而不是假设存在 `python` 命令
+目录和文件名必须兼容 Windows。
 
-### 运行反馈
+### 运行与日志
 
-- 在终端实时打印当前进度
-- 至少包括：
-  - 程序启动
-  - 当前处理哪个 group/project
-  - 当前处理哪个 milestone
-  - 已获取 issue 数量
-  - 导出完成统计
-  - 错误信息
+```text
+py -m gitlab_tools milestones export --config milestones.config.txt
+```
 
-### 日志
+终端实时显示 scope、Milestone、Issue 数量和最终统计。日志写入配置文件同级的 `milestones-export.log`。
 
-- 需要把运行日志写到当前工具目录
-- 日志文件名为：
-  - `export.log`
-- 错误日志必须能够落盘，方便排查
+### 当前验收标准
 
-## 交付要求
+1. Windows 10 + Python 3.11 可运行；
+2. 无需安装第三方包；
+3. 可配置多个 group/project；
+4. 可导出全部 Milestone 及对应 Issue 正文；
+5. 输出目录和日期前缀符合约定；
+6. 终端和日志均有进度及错误信息；
+7. `py -m gitlab_tools --help` 可显示功能域；
+8. `py -m gitlab_tools milestones --help` 可显示 `export`；
+9. 自动化测试可通过。
 
-交付工程内至少包含：
+## 4. 后续功能：Repository 源码导出
 
-- 源码
-- 示例配置文件
-- Windows 启动脚本
-- 用户说明文档
-- 设计/维护文档
-- 需求说明文档
+目标是支持：
 
-## 文档要求
+- 导出指定 project 的代码；
+- 枚举并导出指定 group（可扩展 subgroup 策略）下的多个 project；
+- 输出项目清单、版本信息、成功/失败状态；
+- 单项目失败时尽量不阻断批量任务；
+- 复用通用 GitLab 客户端、Token、分页和日志能力；
+- 业务代码独立放在 `commands/repositories/`。
 
-### 用户说明
+实现前仍需确认导出模式：普通工作副本、完整裸镜像或压缩归档，以及分支、Tag、Git LFS、submodule 的处理范围。
 
-需要提供面向使用者的说明文档，至少包含：
-
-- 工具用途
-- 使用步骤
-- 配置说明
-- 运行方式
-- 常见问题
-
-### 设计说明
-
-需要提供面向维护者的说明文档，至少包含：
-
-- 技术路线
-- 模块划分
-- 数据流
-- 输出结构
-- 已知边界
-- 后续可扩展点
-
-### 需求沉淀
-
-需要把聊天中确认过的需求整理成独立文件，放入工程目录，供后续继续使用和维护时参考。
-
-## 明确不做
-
-当前版本明确不做以下内容：
-
-- SSH Key 直接用于 API 认证
-- LDAP 用户名密码自动登录
-- 浏览器模拟登录
-- Issue 评论导出
-- 二进制附件下载
-- exe 打包
-- 任何第三方 Python 依赖
-
-## 验收标准
-
-满足以下条件可视为通过：
-
-1. 工具可在 Windows 10 + Python 3.11 环境运行
-2. 无需安装第三方 Python 包
-3. 可通过配置指定多个 group/project 路径
-4. 可成功导出 Milestone 和对应 Issue 正文
-5. 输出目录结构符合约定
-6. milestone 目录名符合日期前缀规则
-7. 终端可看到实时进度
-8. 工具目录中可看到 `export.log`
-9. 工程内包含 README、设计文档、需求文档
+该部分是后续需求，不属于当前已实现能力。

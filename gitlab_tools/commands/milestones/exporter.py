@@ -6,10 +6,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from ...common.gitlab_api import GitLabClient
+from ...common.utils import ensure_directory, slugify_windows_name, unique_path
+from .api import MilestoneApi
 from .config import AppConfig, ScopeTarget
-from .gitlab_api import GitLabClient
 from .markdown import render_issue_markdown, render_milestone_markdown
-from .utils import ensure_directory, slugify_windows_name, unique_path
 
 
 @dataclass(slots=True)
@@ -19,17 +20,18 @@ class ExportStats:
     issues_exported: int = 0
 
 
-class Exporter:
+class MilestoneExporter:
     def __init__(self, config: AppConfig, logger: logging.Logger) -> None:
         self.config = config
         self.logger = logger
-        self.client = GitLabClient(
+        client = GitLabClient(
             base_url=config.gitlab_url,
             token=config.token,
             timeout_seconds=config.request_timeout_seconds,
             page_size=config.page_size,
             verify_ssl=config.verify_ssl,
         )
+        self.api = MilestoneApi(client)
 
     def run(self) -> ExportStats:
         stats = ExportStats()
@@ -70,16 +72,16 @@ class Exporter:
 
     def _load_milestones(self, target: ScopeTarget) -> list[dict[str, Any]]:
         if target.kind == "group":
-            milestones = self.client.list_group_milestones(target.path)
+            milestones = self.api.list_group_milestones(target.path)
         else:
-            milestones = self.client.list_project_milestones(target.path)
+            milestones = self.api.list_project_milestones(target.path)
         return sorted(milestones, key=lambda item: ((item.get("title") or "").lower(), item.get("id", 0)))
 
     def _load_issues(self, target: ScopeTarget, milestone: dict[str, Any]) -> list[dict[str, Any]]:
         if target.kind == "group":
-            issues = self.client.list_group_issues_for_milestone(target.path, milestone)
+            issues = self.api.list_group_issues(target.path, milestone)
         else:
-            issues = self.client.list_project_issues_for_milestone(target.path, milestone)
+            issues = self.api.list_project_issues(target.path, milestone)
         self.logger.info(
             "已获取 issue 列表: milestone=[%s] %s, count=%s",
             milestone.get("id", ""),

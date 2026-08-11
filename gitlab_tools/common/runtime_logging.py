@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 
-LOGGER_NAME = "gitlab_milestone_exporter"
+LOGGER_NAME = "gitlab_tools"
 
 
 def setup_logging(log_path: Path) -> logging.Logger:

@@ -1,5 +1,10 @@
 __pycache__/
 *.pyc
-export.log
+*.log
 .DS_Store
 *.zip
+.venv/
+*.egg-info/
+build/
+dist/
+milestones.config.txt

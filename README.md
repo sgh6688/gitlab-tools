@@ -1,80 +1,46 @@
-# GitLab Milestone Exporter
+# GitLab Tools
 
-这个工具用于从 GitLab 导出你指定的 `group` 或 `project` 下的 Milestone，以及每个 Milestone 对应的 Issue 内容，输出为 Markdown 文件夹结构，适合离线归档、二次整理和后续分析。
+`gitlab-tools` 是一个可扩展的 GitLab 自动化与导出工具集。项目不再绑定单一的 Milestone 导出场景，而是通过“功能域 + 动作”的子命令组织不同能力。
 
-这一版是**纯 Python 标准库**实现，不依赖任何第三方包，适合办公内网不能临时安装依赖的环境。
+## 当前功能
 
-正式需求沉淀见 [REQUIREMENTS.md](REQUIREMENTS.md)，设计说明见 [DESIGN.md](DESIGN.md)。
+| 命令 | 状态 | 说明 |
+|---|---|---|
+| `milestones export` | 已实现 | 导出指定 group/project 的 Milestone 及其 Issue，生成 Markdown 归档 |
+| `repositories export` | 规划中 | 按 project 或 group 批量导出项目代码 |
 
-## 适用环境
+统一命令形式：
+
+```text
+python -m gitlab_tools <功能域> <动作> [参数]
+```
+
+查看全部命令：
+
+```bat
+py -m gitlab_tools --help
+```
+
+## Milestone 导出
+
+### 环境
 
 - Windows 10
-- Python 3.11
-- GitLab Community Edition `v17.7.4` 已验证设计接口
-- 认证方式：`Personal Access Token`
-- 第三方依赖：`无`
+- Python 3.11+
+- 仅使用 Python 标准库，无第三方运行依赖
+- 网络可访问目标 GitLab
 
-## 功能范围
+### 配置
 
-- 支持配置多个 `group` 路径
-- 支持配置多个 `project` 路径
-- 导出全部 Milestone
-- 导出 Milestone 下的全部 Issue
-- 导出 Issue 正文内容
-- 不导出评论
-- 不下载图片和其他二进制附件
-- 输出 Markdown 文件
-- 按 Milestone 建独立文件夹
-
-## 目录结构
-
-导出结果默认会写到：
-
-```text
-D:\Downloads\ExportedByGitLabTools
-```
-
-单个 scope 的结构示例：
-
-```text
-ExportedByGitLabTools\
-  group__dept__platform-group\
-    index.md
-    20260526_Sprint-2026-05\
-      milestone.md
-      issues\
-        001_iid-12_登录页修复.md
-        002_iid-18_接口超时处理.md
-```
-
-## 使用步骤
-
-1. 把整个文件夹拷到你的 Windows 电脑。
-2. 打开终端，进入这个工具目录。
-3. 复制配置文件：
+复制示例配置：
 
 ```bat
-copy config.example.txt config.txt
+copy configs\milestones.example.txt milestones.config.txt
 ```
 
-4. 编辑 `config.txt`，填入你的 GitLab 地址、Token、group/project 路径。
-5. 运行：
-
-```bat
-py -m gitlab_milestone_exporter --config config.txt
-```
-
-也可以直接双击：
+编辑 `milestones.config.txt`：
 
 ```text
-run_export.bat
-```
-
-## 配置说明
-
-`config.txt` 示例：
-
-```ini
 gitlab_url=https://gitlab.example.com
 token=
 token_env_var=GITLAB_TOKEN
@@ -82,96 +48,94 @@ output_dir=D:\Downloads\ExportedByGitLabTools
 request_timeout_seconds=30
 page_size=100
 verify_ssl=true
-groups=dept/platform-group
-projects=dept/platform-group/project-a
+groups=dept/platform-group,dept/shared-components/backend
+projects=dept/platform-group/project-a,dept/platform-group/project-b
 ```
 
-说明：
-
-- `gitlab_url`：GitLab 根地址，不带 `/api/v4`
-- `token`：可以直接填 Token
-- `token_env_var`：也可以不把 Token 写进文件，改为先设置环境变量
-- `output_dir`：导出目录，默认就是你要求的 `D:\Downloads\ExportedByGitLabTools`
-- `groups`：要导出的 group 路径，多个值用英文逗号分隔
-- `projects`：要导出的 project 路径，多个值用英文逗号分隔
-
-## Token 建议
-
-推荐使用 `read_api` 权限的 Personal Access Token。  
-如果你们实例权限模型比较特殊，`api` 权限也可以，但不建议给超过需要的权限。
-
-如果你不想把 Token 明文写进 `config.txt`，可以先设置环境变量：
+Token 可直接写入 `token`，也可通过环境变量提供（推荐）：
 
 ```bat
 set GITLAB_TOKEN=你的Token
-py -m gitlab_milestone_exporter --config config.txt
 ```
 
-## group 和 project 路径示例
+### 运行
 
-示例 group：
+```bat
+py -m gitlab_tools milestones export --config milestones.config.txt
+```
+
+也可双击或在终端运行：
+
+```bat
+run_milestones_export.bat
+```
+
+日志写入配置文件同级目录的 `milestones-export.log`。
+
+### 输出
 
 ```text
-dept/platform-group
-dept/shared-components/backend
+D:\Downloads\ExportedByGitLabTools\
+  group__dept__platform-group\
+    index.md
+    20260526_Sprint 2026-05\
+      milestone.md
+      issues\
+        001_iid-12_登录页修复.md
 ```
 
-示例 project：
+- 每个 group/project 单独建目录
+- 每个 Milestone 单独建目录
+- 导出 Milestone 元数据、描述和 Issue 正文
+- 不导出评论和二进制附件
+- 文件名自动处理 Windows 非法字符
+
+## 项目结构
 
 ```text
-dept/platform-group/project-a
-dept/platform-group/project-b
+gitlab_tools/
+  cli.py                         # 顶层命令注册与分发
+  common/                        # 所有功能共用的基础设施
+    gitlab_api.py                # 认证、HTTP 请求、分页、通用错误
+    runtime_logging.py
+    utils.py
+  commands/
+    milestones/                  # Milestone 功能独立模块
+      command.py                 # milestones export 子命令
+      api.py                     # Milestone API 语义
+      config.py
+      exporter.py
+      markdown.py
+configs/
+  milestones.example.txt
+tests/
 ```
 
-## 运行结果说明
+新增功能时，应在 `gitlab_tools/commands/<功能域>/` 下独立实现，仅复用 `common/`，并在顶层 CLI 注册命令。不要把新功能塞入 Milestone 模块。
 
-- 每个 `group` 或 `project` 会生成一个单独目录
-- 目录里有一个 `index.md`，列出当前 scope 下导出的 Milestone
-- 每个 Milestone 目录内有：
-  - `milestone.md`
-  - `issues/`
-- 工具运行时会在当前工具目录生成 `export.log`
-- 终端会实时打印当前正在处理的 scope、milestone、issue 数量，以及错误信息
+## 规划中的项目代码导出
 
-## 已知设计选择
+建议命令：
 
-- `project` scope 仅导出项目自己的 project milestones
-- `group` scope 导出 group milestones，并从 group issues 接口按 milestone 过滤 issues
-- milestone 目录名前缀规则：
-  - 已关闭：取 close 日期；若接口没直接返回，则回退到 `updated_at`
-  - 未关闭但已过期：取 `due_date`
-  - 其他情况：固定 `20269999`
-- 文件名会自动做 Windows 兼容清洗
-- 遇到空标题或非法名称时，会自动回退成安全名称
+```text
+py -m gitlab_tools repositories export --project group/project
+py -m gitlab_tools repositories export --group group/subgroup
+```
 
-## 常见问题
+建议职责：
 
-### 1. 为什么不用 SSH Key
+1. 通过 GitLab API 解析单个 project 或递归枚举 group 下项目；
+2. 按配置选择默认分支、全部分支或仓库归档格式；
+3. 输出项目清单、成功/失败统计和可重试记录；
+4. Git/API 认证、日志和分页继续复用 `common/`；
+5. 源码导出逻辑放入独立的 `commands/repositories/`，不影响现有 Milestone 导出。
 
-SSH Key 主要用于 Git 仓库拉取和推送。  
-这个工具读取的是 GitLab 元数据，走的是 REST API，所以应使用 Personal Access Token。
+当前版本尚未实现该命令，避免把规划能力误写成已交付功能。
 
-### 2. 为什么没有导出评论
+## 开发与测试
 
-这是按你的要求裁掉的，目的是先保证结构清晰、速度可控、导出包不膨胀。
+```bat
+py -m unittest discover -s tests -v
+```
 
-### 3. 如果 GitLab 地址变了怎么办
-
-改 `config.txt` 里的 `gitlab_url` 就行。
-
-### 4. 如果我要新增导出目标
-
-直接在 `groups=` 或 `projects=` 后面继续加，多个值用英文逗号分隔。
-
-## 维护入口
-
-核心入口：
-
-- `gitlab_milestone_exporter/cli.py`
-- `gitlab_milestone_exporter/exporter.py`
-- `gitlab_milestone_exporter/gitlab_api.py`
-
-配套文档：
-
-- 需求说明：[REQUIREMENTS.md](REQUIREMENTS.md)
-- 设计说明：[DESIGN.md](DESIGN.md)
+项目要求 Python 3.11+。完整设计见 [DESIGN.md](DESIGN.md)，现有功能需求基线见 [REQUIREMENTS.md](REQUIREMENTS.md)。

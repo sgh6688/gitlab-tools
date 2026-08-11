@@ -31,7 +31,7 @@ def load_config(config_path: Path) -> AppConfig:
 
     gitlab_url = raw.get("gitlab_url", "").strip().rstrip("/")
     if not gitlab_url:
-        raise ValueError("config.txt 缺少 gitlab_url。")
+        raise ValueError("配置文件缺少 gitlab_url。")
 
     token = raw.get("token", "").strip()
     token_env_var = raw.get("token_env_var", "GITLAB_TOKEN").strip() or "GITLAB_TOKEN"
@@ -39,7 +39,7 @@ def load_config(config_path: Path) -> AppConfig:
         token = os.environ.get(token_env_var, "").strip()
     if not token:
         raise ValueError(
-            f"未找到 GitLab Token。请在 config.txt 的 token 中填写，或设置环境变量 {token_env_var}。"
+            f"未找到 GitLab Token。请在配置文件的 token 中填写，或设置环境变量 {token_env_var}。"
         )
 
     output_dir = Path(raw.get("output_dir", DEFAULT_OUTPUT_DIR))
