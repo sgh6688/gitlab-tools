@@ -87,13 +87,13 @@ gitlab-tools repositories init-config --directory repository-check
 macOS：
 
 ```bash
-shasum -a 256 dist/gitlab_tools-0.3.2-py3-none-any.whl > dist/SHA256SUMS.txt
+(cd dist && shasum -a 256 gitlab_tools-0.3.2-py3-none-any.whl > SHA256SUMS.txt)
 ```
 
 Linux：
 
 ```bash
-sha256sum dist/gitlab_tools-0.3.2-py3-none-any.whl > dist/SHA256SUMS.txt
+(cd dist && sha256sum gitlab_tools-0.3.2-py3-none-any.whl > SHA256SUMS.txt)
 ```
 
 Windows PowerShell：
