@@ -33,7 +33,7 @@ Requirements:
 Install the current Wheel directly from GitHub Releases:
 
 ```console
-python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.6/gitlab_tools-0.3.6-py3-none-any.whl"
+python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.7/gitlab_tools-0.3.7-py3-none-any.whl"
 ```
 
 Create editable configuration files and Windows launchers:
@@ -66,7 +66,7 @@ python -m gitlab_tools repositories export
 For air-gapped installation, download the Wheel on a connected machine, transfer it through an approved channel, then run:
 
 ```console
-python -m pip install --no-index ./gitlab_tools-0.3.6-py3-none-any.whl
+python -m pip install --no-index ./gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 The machine does not need internet access, but it still needs access to the target GitLab server when an export runs.

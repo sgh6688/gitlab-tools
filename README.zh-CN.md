@@ -125,6 +125,8 @@ copy configs\repositories.example.txt repositories.config.txt
 output_dir=D:\Downloads\ExportedByGitLabTools\Repositories
 projects=dept/platform/project-a,dept/platform/project-b
 groups=dept/shared-components
+exclude_projects=dept/shared-components/legacy-project
+exclude_groups=dept/shared-components/archive
 include_subgroups=true
 clone_protocol=http
 output_mode=snapshot

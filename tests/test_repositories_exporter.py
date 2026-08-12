@@ -531,6 +531,34 @@ class RepositoryExporterTests(unittest.TestCase):
             self.assertEqual(1, stats.discovered)
             self.assertEqual(1, stats.cloned)
 
+    def test_excluded_projects_and_group_subtrees_are_not_exported(self) -> None:
+        projects = [
+            {"id": 1, "path_with_namespace": "team/keep"},
+            {"id": 2, "path_with_namespace": "team/private"},
+            {"id": 3, "path_with_namespace": "team/archive/tool"},
+            {"id": 4, "path_with_namespace": "team/archived-tool"},
+        ]
+        config = RepositoryExportConfig(
+            output_dir=Path("export"),
+            groups=["team"],
+            exclude_projects=["team/private"],
+            exclude_groups=["team/archive"],
+        )
+        exporter = RepositoryExporter(
+            config,
+            GitLabConfig("https://gitlab.example.com"),
+            quiet_logger(),
+            FakeRepositoryApi({}, {"team": projects}),
+        )
+
+        collected, failures = exporter._collect_projects()
+
+        self.assertEqual(0, failures)
+        self.assertEqual(
+            ["team/archived-tool", "team/keep"],
+            [item["path_with_namespace"] for item in collected],
+        )
+
     def test_bad_target_does_not_block_other_projects(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

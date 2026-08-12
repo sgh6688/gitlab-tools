@@ -131,6 +131,21 @@ class RepositoryExportConfigTests(unittest.TestCase):
 
         self.assertEqual(["team/project-a", "team/project-b"], config.projects)
 
+    def test_excluded_projects_and_groups_are_loaded_from_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "repositories.config.txt"
+            path.write_text(
+                "groups=team\n"
+                "exclude_projects=team/private-tool, /team/legacy/ \n"
+                "exclude_groups=team/archive, /team/experiments/\n",
+                encoding="utf-8",
+            )
+
+            config = load_repository_config(path)
+
+        self.assertEqual(["team/private-tool", "team/legacy"], config.exclude_projects)
+        self.assertEqual(["team/archive", "team/experiments"], config.exclude_groups)
+
     def test_at_least_one_target_is_required(self) -> None:
         with self.assertRaisesRegex(ValueError, "project.*group"):
             load_repository_config(None)

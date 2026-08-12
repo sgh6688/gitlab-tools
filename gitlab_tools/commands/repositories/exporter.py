@@ -162,7 +162,18 @@ class RepositoryExporter:
             unique.values(),
             key=lambda item: str(item.get("path_with_namespace") or "").casefold(),
         )
-        return sorted_projects, failures
+        return [project for project in sorted_projects if not self._is_excluded(project)], failures
+
+    def _is_excluded(self, project: dict[str, Any]) -> bool:
+        path = str(project.get("path_with_namespace") or "").strip().strip("/")
+        if path in self.config.exclude_projects:
+            self.logger.info("排除 project: %s", path)
+            return True
+        for group in self.config.exclude_groups:
+            if path.startswith(f"{group}/"):
+                self.logger.info("排除 group 下的 project: %s", path)
+                return True
+        return False
 
     def _preflight_projects(self, projects: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
         self._preflight_resolved_destinations.clear()

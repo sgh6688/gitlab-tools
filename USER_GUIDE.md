@@ -65,13 +65,13 @@ Git-x.x.x-64-bit.exe
 工具通常以这个文件交付：
 
 ```text
-gitlab_tools-0.3.6-py3-none-any.whl
+gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 它是 Python Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
 
 - `gitlab_tools`：软件包名称。
-- `0.3.6`：版本号。
+- `0.3.7`：版本号。
 - `py3`：适用于 Python 3。
 - `none-any`：不依赖特定操作系统和 CPU。
 - `.whl`：Python 可直接安装的软件包格式。
@@ -90,7 +90,7 @@ py -m pip install "git+https://github.com/sgh6688/gitlab-tools.git@main"
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install .\gitlab_tools-0.3.6-py3-none-any.whl
+py -m pip install .\gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 ### 完全离线安装
@@ -105,7 +105,7 @@ D:\GitLabTools
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install --no-index .\gitlab_tools-0.3.6-py3-none-any.whl
+py -m pip install --no-index .\gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 `--no-index` 表示禁止 pip 访问互联网。
@@ -113,7 +113,7 @@ py -m pip install --no-index .\gitlab_tools-0.3.6-py3-none-any.whl
 重新安装同一版本：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.6-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 ### 检查安装结果
@@ -363,6 +363,8 @@ verify_ssl=true
 output_dir=D:\GitLabExport\Repositories
 projects=dept/platform/project-a
 groups=
+exclude_projects=
+exclude_groups=
 include_subgroups=true
 clone_protocol=http
 output_mode=snapshot
@@ -523,7 +525,7 @@ Python 未安装或没有加入 PATH。重新安装并勾选 `Add Python to PATH
 重新安装 Wheel：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.6-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 ## HTTP 401 或 403

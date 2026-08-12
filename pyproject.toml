@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitlab-tools"
-version = "0.3.6"
+version = "0.3.7"
 description = "Export GitLab milestones and issues to Markdown, and projects or groups as clean source snapshots"
 readme = "README.md"
 license = {file = "LICENSE"}

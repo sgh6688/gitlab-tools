@@ -24,8 +24,8 @@
 确认版本号已经更新，例如：
 
 ```text
-pyproject.toml: 0.3.6
-gitlab_tools/__init__.py: 0.3.6
+pyproject.toml: 0.3.7
+gitlab_tools/__init__.py: 0.3.7
 ```
 
 执行：
@@ -50,7 +50,7 @@ python3.11 -m pip wheel --no-deps --wheel-dir dist .
 生成：
 
 ```text
-dist/gitlab_tools-0.3.6-py3-none-any.whl
+dist/gitlab_tools-0.3.7-py3-none-any.whl
 ```
 
 ## 3. 隔离安装验证
@@ -59,7 +59,7 @@ macOS/Linux：
 
 ```bash
 python3.11 -m venv /tmp/gitlab-tools-release-check
-/tmp/gitlab-tools-release-check/bin/python -m pip install --no-index dist/gitlab_tools-0.3.6-py3-none-any.whl
+/tmp/gitlab-tools-release-check/bin/python -m pip install --no-index dist/gitlab_tools-0.3.7-py3-none-any.whl
 /tmp/gitlab-tools-release-check/bin/gitlab-tools --help
 /tmp/gitlab-tools-release-check/bin/gitlab-tools milestones --help
 /tmp/gitlab-tools-release-check/bin/gitlab-tools repositories --help
@@ -69,7 +69,7 @@ Windows：
 
 ```bat
 py -m venv release-check
-release-check\Scripts\python -m pip install --no-index dist\gitlab_tools-0.3.6-py3-none-any.whl
+release-check\Scripts\python -m pip install --no-index dist\gitlab_tools-0.3.7-py3-none-any.whl
 release-check\Scripts\gitlab-tools --help
 release-check\Scripts\gitlab-tools milestones --help
 release-check\Scripts\gitlab-tools repositories --help
@@ -87,19 +87,19 @@ gitlab-tools repositories init-config --directory repository-check
 macOS：
 
 ```bash
-(cd dist && shasum -a 256 gitlab_tools-0.3.6-py3-none-any.whl > SHA256SUMS.txt)
+(cd dist && shasum -a 256 gitlab_tools-0.3.7-py3-none-any.whl > SHA256SUMS.txt)
 ```
 
 Linux：
 
 ```bash
-(cd dist && sha256sum gitlab_tools-0.3.6-py3-none-any.whl > SHA256SUMS.txt)
+(cd dist && sha256sum gitlab_tools-0.3.7-py3-none-any.whl > SHA256SUMS.txt)
 ```
 
 Windows PowerShell：
 
 ```powershell
-$wheel = "dist\gitlab_tools-0.3.6-py3-none-any.whl"
+$wheel = "dist\gitlab_tools-0.3.7-py3-none-any.whl"
 $hash = (Get-FileHash $wheel -Algorithm SHA256).Hash.ToLower()
 "$hash  $([IO.Path]::GetFileName($wheel))" | Set-Content dist\SHA256SUMS.txt
 ```
@@ -121,7 +121,7 @@ sha256sum -c dist/SHA256SUMS.txt
 Windows PowerShell：
 
 ```powershell
-$wheel = "dist\gitlab_tools-0.3.6-py3-none-any.whl"
+$wheel = "dist\gitlab_tools-0.3.7-py3-none-any.whl"
 $expected = (Get-Content dist\SHA256SUMS.txt).Split()[0].ToLower()
 $actual = (Get-FileHash $wheel -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected) { throw "SHA-256 校验失败，请勿安装该文件。" }
@@ -148,17 +148,17 @@ gh repo view sgh6688/gitlab-tools --json visibility
 确认 Public 后，提交并推送版本，然后创建版本标签：
 
 ```bash
-git tag -a v0.3.6 -m "gitlab-tools v0.3.6"
-git push origin v0.3.6
+git tag -a v0.3.7 -m "gitlab-tools v0.3.7"
+git push origin v0.3.7
 ```
 
 已安装并登录 GitHub CLI 时：
 
 ```bash
-gh release create v0.3.6 \
-  dist/gitlab_tools-0.3.6-py3-none-any.whl \
+gh release create v0.3.7 \
+  dist/gitlab_tools-0.3.7-py3-none-any.whl \
   dist/SHA256SUMS.txt \
-  --title "gitlab-tools v0.3.6" \
+  --title "gitlab-tools v0.3.7" \
   --generate-notes
 ```
 
@@ -172,8 +172,8 @@ gh release create v0.3.6 \
 
 ```text
 gitlab-tools\
-  0.3.6\
-    gitlab_tools-0.3.6-py3-none-any.whl
+  0.3.7\
+    gitlab_tools-0.3.7-py3-none-any.whl
     SHA256SUMS.txt
 ```
 
@@ -191,10 +191,10 @@ gitlab-tools\
 如果目标电脑连 Python 和 Git 都没有，准备：
 
 ```text
-GitLabTools-Offline-0.3.6\
+GitLabTools-Offline-0.3.7\
   python-3.11.x-amd64.exe
   Git-x.x.x-64-bit.exe
-  gitlab_tools-0.3.6-py3-none-any.whl
+  gitlab_tools-0.3.7-py3-none-any.whl
   SHA256SUMS.txt
   USER_GUIDE.md
 ```

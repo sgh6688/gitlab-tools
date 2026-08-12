@@ -7,6 +7,12 @@ projects=dept/platform-group/project-a,dept/platform-group/project-b
 # groups 取值：群组 ID 或完整群组路径。
 groups=dept/shared-components
 
+# 排除范围；多个值用英文逗号分隔，不使用时留空。
+# exclude_projects：填写完整 group/project 路径，精确排除对应项目。
+exclude_projects=dept/shared-components/legacy-project
+# exclude_groups：填写完整群组路径，排除该群组及其所有子组中的项目。
+exclude_groups=dept/shared-components/archive
+
 # 导出 group 时是否包含所有子组项目；取值：true/false、yes/no、on/off、1/0；默认：true。
 include_subgroups=true
 

@@ -17,6 +17,8 @@ class RepositoryExportConfig:
     output_dir: Path = DEFAULT_OUTPUT_DIR
     projects: list[str] = field(default_factory=list)
     groups: list[str] = field(default_factory=list)
+    exclude_projects: list[str] = field(default_factory=list)
+    exclude_groups: list[str] = field(default_factory=list)
     include_subgroups: bool = True
     existing: str = "skip"
     clone_protocol: str = "http"
@@ -37,6 +39,8 @@ def load_config(
     raw = parse_kv_config(config_path) if config_path is not None else {}
     file_projects = _parse_list(raw.get("projects", ""))
     file_groups = _parse_list(raw.get("groups", ""))
+    exclude_projects = _parse_list(raw.get("exclude_projects", ""))
+    exclude_groups = _parse_list(raw.get("exclude_groups", ""))
 
     command_targets_given = bool(cli_projects or cli_groups)
     projects = _clean_targets(cli_projects or []) if command_targets_given else file_projects
@@ -67,6 +71,8 @@ def load_config(
         output_dir=Path(output_dir or raw.get("output_dir", str(DEFAULT_OUTPUT_DIR))),
         projects=projects,
         groups=groups,
+        exclude_projects=exclude_projects,
+        exclude_groups=exclude_groups,
         include_subgroups=(
             include_subgroups
             if include_subgroups is not None
