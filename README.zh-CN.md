@@ -98,6 +98,7 @@ copy configs\gitlab.example.txt gitlab.config.txt
 gitlab_url=https://gitlab.example.com
 token=
 token_env_var=GITLAB_TOKEN
+git_http_username=oauth2
 request_timeout_seconds=30
 page_size=100
 verify_ssl=true
@@ -109,7 +110,9 @@ verify_ssl=true
 set GITLAB_TOKEN=你的Token
 ```
 
-`gitlab.config.txt` 已加入 `.gitignore`。Token 用于 API 请求和 HTTP Git 获取；Git 子进程环境会剥离所有含有当前 Token 值的父环境变量。认证网络操作只在工具创建、禁用全局/系统 Git 配置的隔离 bare 仓库中进行，普通工作树的 checkout、hook、filter、fetch 和 merge 均处于无 Token 环境。认证头仅限定到配置的 GitLab 同源地址，不写进 clone URL，也不会保存在仓库的 `origin` 地址中。API 跨 origin 重定向会被拒绝，Git 跨 origin 重定向不会携带该认证头；API/Git 错误文本会清洗明文及编码后的认证值。
+`gitlab.config.txt` 已加入 `.gitignore`。同一个 Token 用于 API 请求和 HTTP Git 获取：API 使用 `PRIVATE-TOKEN`，Git 使用 HTTP Basic（用户名默认为 `oauth2`，Token 作为密码）。纯 HTTP 内网站点应如实配置 `gitlab_url=http://...`，不要改成并未提供服务的 HTTPS；协议、主机和端口必须与 GitLab API 返回的 `http_url_to_repo` 同源。若旧版 GitLab 或前置代理要求真实用户名，可将 `git_http_username` 改成 Token 所属账号名，仍无需维护第二套凭据。
+
+Git 子进程环境会剥离所有含有当前 Token 值的父环境变量。认证网络操作只在工具创建、禁用全局/系统 Git 配置的隔离 bare 仓库中进行，普通工作树的 checkout、hook、filter、fetch 和 merge 均处于无 Token 环境。认证头仅限定到配置的 GitLab 同源地址，不写进 clone URL，也不会保存在仓库的 `origin` 地址中。API 跨 origin 重定向会被拒绝，Git 跨 origin 重定向不会携带该认证头；API/Git 错误文本会清洗明文及编码后的认证值。
 
 ### 2. Repository 功能配置
 

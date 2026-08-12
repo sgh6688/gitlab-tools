@@ -33,7 +33,7 @@ Requirements:
 Install the current Wheel directly from GitHub Releases:
 
 ```console
-python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.2/gitlab_tools-0.3.2-py3-none-any.whl"
+python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.3/gitlab_tools-0.3.3-py3-none-any.whl"
 ```
 
 Create editable configuration files and Windows launchers:
@@ -66,7 +66,7 @@ python -m gitlab_tools repositories export
 For air-gapped installation, download the Wheel on a connected machine, transfer it through an approved channel, then run:
 
 ```console
-python -m pip install --no-index ./gitlab_tools-0.3.2-py3-none-any.whl
+python -m pip install --no-index ./gitlab_tools-0.3.3-py3-none-any.whl
 ```
 
 The machine does not need internet access, but it still needs access to the target GitLab server when an export runs.
@@ -115,6 +115,7 @@ Initialization uses exclusive file creation and never overwrites an existing fil
 ## Safety properties
 
 - Tokens can come from environment variables and do not need to be stored in files.
+- One token is reused safely for the GitLab API and Git HTTP clone. Cleartext-only internal GitLab servers remain supported with `gitlab_url=http://...`; `git_http_username` can be set when a legacy server or proxy requires the account name instead of the default `oauth2` username.
 - HTTP Git authentication is scoped to the validated GitLab origin and is not embedded in clone URLs or remotes.
 - Cross-origin API redirects are rejected; Git redirects do not receive the authentication header.
 - Repository output rejects traversal, link/junction aliases, Windows reserved names, and normalized path collisions.

@@ -58,6 +58,72 @@ class RepositoryExporterTests(unittest.TestCase):
         self.assertEqual("Authorization" + ": " + "Basic " + expected, environment["GIT_CONFIG_VALUE_0"])
         self.assertNotIn("secret-token", environment["GIT_CONFIG_VALUE_0"])
 
+    def test_git_auth_header_uses_configured_username_for_internal_http_gitlab(self) -> None:
+        exporter = RepositoryExporter(
+            RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
+            GitLabConfig(
+                "http://gitlab.internal",
+                token="secret-token",
+                git_http_username="domain-user",
+            ),
+            quiet_logger(),
+            FakeRepositoryApi({}, {}),
+        )
+
+        environment = exporter._git_environment(authenticated=True)
+
+        expected = base64.b64encode(b"domain-user:secret-token").decode("ascii")
+        self.assertEqual("http.http://gitlab.internal/.extraHeader", environment["GIT_CONFIG_KEY_0"])
+        self.assertEqual("Authorization" + ": " + "Basic " + expected, environment["GIT_CONFIG_VALUE_0"])
+
+    def test_username_prompt_error_is_explained_as_http_token_authentication_failure(self) -> None:
+        exporter = RepositoryExporter(
+            RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
+            GitLabConfig("http://gitlab.internal", token="secret-token"),
+            quiet_logger(),
+            FakeRepositoryApi({}, {}),
+        )
+        result = SimpleNamespace(
+            returncode=128,
+            stdout="",
+            stderr="fatal: could not read Username for 'http://gitlab.internal': terminal prompts disabled",
+        )
+
+        with patch("gitlab_tools.commands.repositories.exporter.subprocess.run", return_value=result):
+            with self.assertRaises(GitCommandError) as caught:
+                exporter._run_git(
+                    ["clone", "http://gitlab.internal/team/tool.git"],
+                    authenticated=True,
+                )
+
+        message = str(caught.exception)
+        self.assertIn("Git HTTP Token 认证未被服务端接受或认证配置未生效", message)
+        self.assertIn("git_http_username", message)
+        self.assertIn("不要把仅支持 HTTP 的站点改成 HTTPS", message)
+
+    def test_git_error_redacts_basic_credentials_with_configured_username(self) -> None:
+        exporter = RepositoryExporter(
+            RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
+            GitLabConfig(
+                "http://gitlab.internal",
+                token="secret-token",
+                git_http_username="domain-user",
+            ),
+            quiet_logger(),
+            FakeRepositoryApi({}, {}),
+        )
+        encoded = base64.b64encode(b"domain-user:secret-token").decode("ascii")
+        result = SimpleNamespace(returncode=1, stdout="", stderr=f"secret-token Basic {encoded}")
+
+        with patch("gitlab_tools.commands.repositories.exporter.subprocess.run", return_value=result):
+            with self.assertRaises(GitCommandError) as caught:
+                exporter._run_git(["clone", "http://gitlab.internal/team/tool.git"])
+
+        message = str(caught.exception)
+        self.assertNotIn("secret-token", message)
+        self.assertNotIn(encoded, message)
+        self.assertIn("[REDACTED]", message)
+
     def test_real_git_http_process_sends_token_header(self) -> None:
         received_headers: list[str] = []
 

@@ -342,6 +342,17 @@ class RepositoryExporter:
         result = subprocess.run(["git", *arguments], **run_options)
         if result.returncode != 0:
             detail = self._sanitize_git_detail((result.stderr or result.stdout).strip())
+            if (
+                authenticated
+                and self.gitlab_config.token
+                and "could not read Username" in detail
+                and "terminal prompts disabled" in detail
+            ):
+                detail += (
+                    "\n诊断：Git HTTP Token 认证未被服务端接受或认证配置未生效。请保持 gitlab_url 与站点实际协议、主机、"
+                    "端口一致；仅支持 HTTP 的内网站点应继续使用 http://，不要把仅支持 HTTP 的站点改成 HTTPS。"
+                    "如该 GitLab/代理要求真实账号名，请在通用配置中设置 git_http_username；Token 仍作为密码统一用于 API 和 clone。"
+                )
             raise GitCommandError(f"git 命令失败，exit={result.returncode}: {detail}")
         return result.stdout
 
@@ -349,7 +360,9 @@ class RepositoryExporter:
         token = self.gitlab_config.token
         if not token:
             return detail
-        encoded = base64.b64encode(f"oauth2:{token}".encode("utf-8")).decode("ascii")
+        encoded = base64.b64encode(
+            f"{self.gitlab_config.git_http_username}:{token}".encode("utf-8")
+        ).decode("ascii")
         return detail.replace(token, "[REDACTED]").replace(encoded, "[REDACTED]")
 
     @staticmethod
@@ -412,7 +425,9 @@ class RepositoryExporter:
         config_entries: list[tuple[str, str]] = []
         http_scope = self._gitlab_http_scope()
         if authenticated and token:
-            credentials = base64.b64encode(f"oauth2:{token}".encode("utf-8")).decode("ascii")
+            credentials = base64.b64encode(
+                f"{self.gitlab_config.git_http_username}:{token}".encode("utf-8")
+            ).decode("ascii")
             authorization_header = "Authorization" + ": " + "Basic " + credentials
             config_entries.append((f"http.{http_scope}.extraHeader", authorization_header))
         if not self.gitlab_config.verify_ssl:

@@ -28,6 +28,32 @@ class SharedGitLabConfigTests(unittest.TestCase):
         self.assertEqual("secret-token", config.token)
         self.assertFalse(config.verify_ssl)
 
+    def test_http_gitlab_can_configure_git_http_username(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gitlab.config.txt"
+            path.write_text(
+                "gitlab_url=http://gitlab.internal\n"
+                "git_http_username=domain-user\n",
+                encoding="utf-8",
+            )
+
+            config = load_gitlab_config(path)
+
+        self.assertEqual("http://gitlab.internal", config.gitlab_url)
+        self.assertEqual("domain-user", config.git_http_username)
+
+    def test_git_http_username_rejects_colon_and_unicode_control_characters(self) -> None:
+        for value in ("domain:user", "domain-user\x00other", "domain\tuser", "domain\x01user"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "gitlab.config.txt"
+                path.write_text(
+                    "gitlab_url=http://gitlab.internal\n"
+                    f"git_http_username={value}\n",
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(ValueError, "git_http_username"):
+                    load_gitlab_config(path)
+
     def test_gitlab_url_rejects_credentials_and_non_http_schemes(self) -> None:
         for value in ("ftp://gitlab.example.com", "https://user:secret@gitlab.example.com", "https:///missing"):
             with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:

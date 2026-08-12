@@ -1,3 +1,3 @@
 """Reusable command-line tools for GitLab automation and export."""
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -13,6 +14,7 @@ class GitLabConfig:
     request_timeout_seconds: int = 30
     page_size: int = 100
     verify_ssl: bool = True
+    git_http_username: str = "oauth2"
 
 
 def load_gitlab_config(config_path: Path) -> GitLabConfig:
@@ -34,6 +36,12 @@ def load_gitlab_config(config_path: Path) -> GitLabConfig:
     if not token:
         token = os.environ.get(token_env_var, "").strip()
 
+    git_http_username = raw.get("git_http_username", "oauth2").strip() or "oauth2"
+    if ":" in git_http_username or any(
+        unicodedata.category(character).startswith("C") for character in git_http_username
+    ):
+        raise ValueError("git_http_username 必须是非空且不含冒号或控制字符的用户名。")
+
     timeout = int(raw.get("request_timeout_seconds", "30"))
     page_size = int(raw.get("page_size", "100"))
     if timeout <= 0:
@@ -44,6 +52,7 @@ def load_gitlab_config(config_path: Path) -> GitLabConfig:
     return GitLabConfig(
         gitlab_url=gitlab_url,
         token=token,
+        git_http_username=git_http_username,
         request_timeout_seconds=timeout,
         page_size=page_size,
         verify_ssl=parse_bool(raw.get("verify_ssl", "true")),
