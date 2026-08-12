@@ -34,6 +34,16 @@ class FakeRepositoryApi:
         return self.groups[group]
 
 
+class FakeRepositoryApiWithCurrentUser(FakeRepositoryApi):
+    def __init__(self, projects: dict[str, Any], groups: dict[str, list[dict[str, Any]]]) -> None:
+        super().__init__(projects, groups)
+        self.current_username_calls = 0
+
+    def current_username(self) -> str:
+        self.current_username_calls += 1
+        return "actual-gitlab-user"
+
+
 def quiet_logger() -> logging.Logger:
     logger = logging.getLogger("repository-export-tests")
     logger.handlers.clear()
@@ -59,6 +69,7 @@ class RepositoryExporterTests(unittest.TestCase):
         self.assertNotIn("secret-token", environment["GIT_CONFIG_VALUE_0"])
 
     def test_git_auth_header_uses_configured_username_for_internal_http_gitlab(self) -> None:
+        api = FakeRepositoryApiWithCurrentUser({}, {})
         exporter = RepositoryExporter(
             RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
             GitLabConfig(
@@ -67,7 +78,7 @@ class RepositoryExporterTests(unittest.TestCase):
                 git_http_username="domain-user",
             ),
             quiet_logger(),
-            FakeRepositoryApi({}, {}),
+            api,
         )
 
         environment = exporter._git_environment(authenticated=True)
@@ -75,6 +86,25 @@ class RepositoryExporterTests(unittest.TestCase):
         expected = base64.b64encode(b"domain-user:secret-token").decode("ascii")
         self.assertEqual("http.http://gitlab.internal/.extraHeader", environment["GIT_CONFIG_KEY_0"])
         self.assertEqual("Authorization" + ": " + "Basic " + expected, environment["GIT_CONFIG_VALUE_0"])
+        self.assertEqual(0, api.current_username_calls)
+
+    def test_default_oauth2_username_is_replaced_by_token_owners_gitlab_username(self) -> None:
+        api = FakeRepositoryApiWithCurrentUser({}, {})
+        exporter = RepositoryExporter(
+            RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
+            GitLabConfig("http://gitlab.internal", token="secret-token"),
+            quiet_logger(),
+            api,
+        )
+
+        environment = exporter._git_environment(authenticated=True)
+
+        expected = base64.b64encode(b"actual-gitlab-user:secret-token").decode("ascii")
+        self.assertEqual("Authorization" + ": " + "Basic " + expected, environment["GIT_CONFIG_VALUE_0"])
+        self.assertEqual(1, api.current_username_calls)
+
+        exporter._git_environment(authenticated=True)
+        self.assertEqual(1, api.current_username_calls)
 
     def test_username_prompt_error_is_explained_as_http_token_authentication_failure(self) -> None:
         exporter = RepositoryExporter(

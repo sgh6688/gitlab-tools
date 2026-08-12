@@ -6,7 +6,7 @@ gitlab_url=https://gitlab.example.com
 token=
 token_env_var=GITLAB_TOKEN
 
-# Git HTTP Basic 认证用户名。默认 oauth2；部分内网/旧版 GitLab 或代理要求填写 Token 所属真实用户名。
+# Git HTTP Basic 认证用户名。保留 oauth2 时自动查询 Token 所属真实用户名；也可直接填写真实用户名。
 git_http_username=oauth2
 
 # 通用 API 请求配置

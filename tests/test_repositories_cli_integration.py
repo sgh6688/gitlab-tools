@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import base64
 import subprocess
 import sys
 import tempfile
@@ -26,15 +27,32 @@ class RepositoryCliIntegrationTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(bare_repository), "update-server-info"], check=True)
             output = root / "export"
             expected_token = "integration-token"
+            expected_username = "actual-gitlab-user"
+            expected_basic = "Basic " + base64.b64encode(
+                f"{expected_username}:{expected_token}".encode("utf-8")
+            ).decode("ascii")
 
             class Handler(SimpleHTTPRequestHandler):
                 def do_GET(self) -> None:  # noqa: N802
                     if not self.path.startswith("/api/v4/"):
+                        if self.headers.get("Authorization") != expected_basic:
+                            self.send_response(401)
+                            self.send_header("WWW-Authenticate", 'Basic realm="GitLab"')
+                            self.end_headers()
+                            return
                         super().do_GET()
                         return
                     if self.headers.get("PRIVATE-TOKEN") != expected_token:
                         self.send_response(401)
                         self.end_headers()
+                        return
+                    if self.path.startswith("/api/v4/user"):
+                        payload = json.dumps({"id": 8, "username": expected_username}).encode("utf-8")
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Content-Length", str(len(payload)))
+                        self.end_headers()
+                        self.wfile.write(payload)
                         return
                     if not self.path.startswith("/api/v4/projects/team%2Ftool"):
                         self.send_response(404)

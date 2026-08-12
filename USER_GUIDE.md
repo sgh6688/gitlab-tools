@@ -65,13 +65,13 @@ Git-x.x.x-64-bit.exe
 工具通常以这个文件交付：
 
 ```text
-gitlab_tools-0.3.3-py3-none-any.whl
+gitlab_tools-0.3.4-py3-none-any.whl
 ```
 
 它是 Python Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
 
 - `gitlab_tools`：软件包名称。
-- `0.3.3`：版本号。
+- `0.3.4`：版本号。
 - `py3`：适用于 Python 3。
 - `none-any`：不依赖特定操作系统和 CPU。
 - `.whl`：Python 可直接安装的软件包格式。
@@ -90,7 +90,7 @@ py -m pip install "git+https://github.com/sgh6688/gitlab-tools.git@main"
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install .\gitlab_tools-0.3.3-py3-none-any.whl
+py -m pip install .\gitlab_tools-0.3.4-py3-none-any.whl
 ```
 
 ### 完全离线安装
@@ -105,7 +105,7 @@ D:\GitLabTools
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install --no-index .\gitlab_tools-0.3.3-py3-none-any.whl
+py -m pip install --no-index .\gitlab_tools-0.3.4-py3-none-any.whl
 ```
 
 `--no-index` 表示禁止 pip 访问互联网。
@@ -113,7 +113,7 @@ py -m pip install --no-index .\gitlab_tools-0.3.3-py3-none-any.whl
 重新安装同一版本：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.3-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.4-py3-none-any.whl
 ```
 
 ### 检查安装结果
@@ -192,7 +192,7 @@ set "GITLAB_TOKEN=你的Token"
 
 关闭窗口后，这个临时环境变量会失效。
 
-同一个 Token 会同时用于 GitLab API 和 Repository HTTP clone，不需要再维护一套 clone 密码。API 使用 `PRIVATE-TOKEN`，Git 使用 HTTP Basic，默认用户名为 `oauth2`、Token 作为密码。若内网 GitLab 或前置代理要求真实用户名，将 `git_http_username` 改为 Token 所属账号名。
+同一个 Token 会同时用于 GitLab API 和 Repository HTTP clone，不需要再维护一套 clone 密码。API 使用 `PRIVATE-TOKEN`，Git 使用 HTTP Basic，Token 作为密码。保留默认 `git_http_username=oauth2` 时，工具会用同一 Token 查询 `/api/v4/user`，自动取得 Token 所属真实 GitLab 用户名并用于 clone；也可以显式填写真实用户名，避免自动查询。
 
 如果 GitLab 站点实际只有 HTTP，必须保持 `gitlab_url=http://...`；不要改为 HTTPS，否则会出现“目标计算机积极拒绝”之类的连接错误。配置地址的协议、主机和端口应与 API 返回的 `http_url_to_repo` 保持同源。
 
@@ -504,7 +504,7 @@ Python 未安装或没有加入 PATH。重新安装并勾选 `Add Python to PATH
 重新安装 Wheel：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.3-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.4-py3-none-any.whl
 ```
 
 ## HTTP 401 或 403
@@ -525,7 +525,7 @@ py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.3-py3-none-any
 - `gitlab_url` 是否与 GitLab 实际地址的协议、主机和端口完全一致；
 - 如果内网站点只有 HTTP，应保持 `gitlab_url=http://...`，不要改成 HTTPS；HTTPS 端口没有服务时，Windows 会出现 `WinError 10061` 或“目标计算机积极拒绝”；
 - API 返回的 `http_url_to_repo` 是否与 `gitlab_url` 同源；
-- 默认 `git_http_username=oauth2` 是否被服务端接受；若旧版 GitLab、LDAP 或前置代理要求真实账号名，将其改成 Token 所属 GitLab 用户名；
+- `/api/v4/user` 是否能返回 Token 所属账号的有效 `username`；默认 `git_http_username=oauth2` 会触发自动查询，也可直接改成该真实用户名；
 - Token 是否具有 `read_repository` 权限。
 
 API 和 Git clone 继续使用同一个 Token，不需要把 Token 写进 clone URL，也不需要维护第二套密码。

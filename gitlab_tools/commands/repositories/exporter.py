@@ -36,6 +36,8 @@ class GitCommandError(RuntimeError):
 
 
 class RepositoryProjectApi(Protocol):
+    def current_username(self) -> str: ...
+
     def resolve_project(self, project: str) -> dict[str, Any]: ...
 
     def list_group_projects(self, group: str, *, include_subgroups: bool) -> list[dict[str, Any]]: ...
@@ -53,6 +55,7 @@ class RepositoryExporter:
         self.gitlab_config = gitlab_config
         self.logger = logger
         self._preflight_resolved_destinations: dict[str, Path] = {}
+        self._resolved_git_http_username: str | None = None
         if api is None:
             client = GitLabClient(
                 base_url=gitlab_config.gitlab_url,
@@ -351,7 +354,8 @@ class RepositoryExporter:
                 detail += (
                     "\n诊断：Git HTTP Token 认证未被服务端接受或认证配置未生效。请保持 gitlab_url 与站点实际协议、主机、"
                     "端口一致；仅支持 HTTP 的内网站点应继续使用 http://，不要把仅支持 HTTP 的站点改成 HTTPS。"
-                    "如该 GitLab/代理要求真实账号名，请在通用配置中设置 git_http_username；Token 仍作为密码统一用于 API 和 clone。"
+                    "默认配置会通过同一 Token 查询真实 GitLab 用户名；也可在通用配置中显式设置 git_http_username。"
+                    "Token 仍作为密码统一用于 API 和 clone。"
                 )
             raise GitCommandError(f"git 命令失败，exit={result.returncode}: {detail}")
         return result.stdout
@@ -360,10 +364,24 @@ class RepositoryExporter:
         token = self.gitlab_config.token
         if not token:
             return detail
+        username = self._resolved_git_http_username or self.gitlab_config.git_http_username
         encoded = base64.b64encode(
-            f"{self.gitlab_config.git_http_username}:{token}".encode("utf-8")
+            f"{username}:{token}".encode("utf-8")
         ).decode("ascii")
         return detail.replace(token, "[REDACTED]").replace(encoded, "[REDACTED]")
+
+    def _git_http_username(self) -> str:
+        if self._resolved_git_http_username is not None:
+            return self._resolved_git_http_username
+        username = self.gitlab_config.git_http_username
+        current_username = getattr(self.api, "current_username", None)
+        if username == "oauth2" and self.gitlab_config.token and callable(current_username):
+            resolved_username = current_username()
+            if not isinstance(resolved_username, str) or not resolved_username:
+                raise GitLabProtocolError("GitLab 当前用户响应缺少有效的 username。")
+            username = resolved_username
+        self._resolved_git_http_username = username
+        return username
 
     @staticmethod
     def _normalize_clone_url(value: str) -> str:
@@ -425,8 +443,9 @@ class RepositoryExporter:
         config_entries: list[tuple[str, str]] = []
         http_scope = self._gitlab_http_scope()
         if authenticated and token:
+            username = self._git_http_username()
             credentials = base64.b64encode(
-                f"{self.gitlab_config.git_http_username}:{token}".encode("utf-8")
+                f"{username}:{token}".encode("utf-8")
             ).decode("ascii")
             authorization_header = "Authorization" + ": " + "Basic " + credentials
             config_entries.append((f"http.{http_scope}.extraHeader", authorization_header))

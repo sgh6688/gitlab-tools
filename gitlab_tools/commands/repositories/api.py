@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from collections.abc import Iterator
 from typing import Any, Protocol
 from urllib.parse import quote
@@ -22,6 +23,18 @@ class RepositoryApi:
 
     def __init__(self, client: RepositoryGitLabClient) -> None:
         self.client = client
+
+    def current_username(self) -> str:
+        user = self.client.get_json("/user")
+        username = user.get("username")
+        if (
+            not isinstance(username, str)
+            or not username.strip()
+            or ":" in username
+            or any(unicodedata.category(character).startswith("C") for character in username)
+        ):
+            raise GitLabProtocolError("GitLab 当前用户响应缺少有效的 username。")
+        return username.strip()
 
     def resolve_project(self, project: str) -> dict[str, Any]:
         value = project.strip().strip("/")

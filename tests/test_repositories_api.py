@@ -26,6 +26,24 @@ class FakeClient:
 
 
 class RepositoryApiTests(unittest.TestCase):
+    def test_current_username_is_loaded_from_authenticated_user_endpoint(self) -> None:
+        client = FakeClient()
+        client.get_responses["/user"] = {"id": 8, "username": "actual-gitlab-user"}
+
+        username = RepositoryApi(client).current_username()
+
+        self.assertEqual("actual-gitlab-user", username)
+        self.assertEqual(["/user"], client.get_calls)
+
+    def test_current_username_rejects_values_unsafe_for_http_basic(self) -> None:
+        for username in ("", "domain:user", "domain\tuser"):
+            with self.subTest(username=username):
+                client = FakeClient()
+                client.get_responses["/user"] = {"id": 8, "username": username}
+
+                with self.assertRaisesRegex(GitLabProtocolError, "username"):
+                    RepositoryApi(client).current_username()
+
     def test_full_project_path_is_url_encoded_and_looked_up_directly(self) -> None:
         client = FakeClient()
         client.get_responses["/projects/team%2Fplatform%2Ftool"] = {

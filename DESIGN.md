@@ -29,7 +29,7 @@ Repository 功能导出普通 Git 工作树，不压缩；支持单个 project �
 
 集合参数采用安全覆盖规则：命令行一旦出现 `--project` 或 `--group`，就不再执行功能配置文件中的任何默认目标。这样临时任务不会误触发批量配置。
 
-Token 优先读配置中的 `token`，为空时读取 `token_env_var` 指向的环境变量。同一个 Token 在 API 请求中通过 `PRIVATE-TOKEN` 使用，在 Git HTTP 获取中作为 Basic 密码使用；Basic 用户名由 `git_http_username` 配置，默认 `oauth2`，以兼容要求真实账号名的旧版 GitLab 或前置代理。纯 HTTP 内网站点保持 `http://`，不强制升级为不存在的 HTTPS 服务。
+Token 优先读配置中的 `token`，为空时读取 `token_env_var` 指向的环境变量。同一个 Token 在 API 请求中通过 `PRIVATE-TOKEN` 使用，在 Git HTTP 获取中作为 Basic 密码使用；Basic 用户名由 `git_http_username` 配置；保留兼容默认值 `oauth2` 时，会通过同一 Token 调用 `/api/v4/user` 自动解析真实用户名，以兼容要求真实账号名的旧版 GitLab、LDAP 或前置代理。纯 HTTP 内网站点保持 `http://`，不强制升级为不存在的 HTTPS 服务。
 
 HTTP Git 获取在工具创建的隔离 bare 仓库中使用 URL-scoped `http.<origin>.extraHeader`，协议、主机和端口必须与 GitLab API 返回的 clone 地址同源；同时禁用系统/全局 Git 配置。工作树 checkout、hook、filter、fetch 和 merge 不继承 Token；所有含有当前 Token 值的父环境变量均被剥离。Token 不拼入 URL，也不写入 `.git/config`。
 
