@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -262,11 +263,23 @@ class RepositoryExporter:
                 if path.is_symlink():
                     path.unlink()
                 else:
-                    shutil.rmtree(path)
+                    shutil.rmtree(path, onerror=RepositoryExporter._retry_remove_read_only)
                 directory_names.remove(name)
             for name in file_names:
                 if name in SNAPSHOT_METADATA_FILES:
                     (current / name).unlink()
+
+    @staticmethod
+    def _retry_remove_read_only(
+        remove: Any,
+        path: str,
+        error_info: tuple[type[BaseException], BaseException, Any],
+    ) -> None:
+        error = error_info[1]
+        if not isinstance(error, PermissionError):
+            raise error
+        os.chmod(path, stat.S_IWRITE | stat.S_IREAD)
+        remove(path)
 
     def _clone_via_isolated_mirror(
         self,

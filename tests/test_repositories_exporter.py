@@ -5,6 +5,7 @@ import ctypes
 import errno
 import logging
 import os
+import stat
 import subprocess
 import tempfile
 import threading
@@ -71,6 +72,18 @@ class RepositoryExporterTests(unittest.TestCase):
                 RepositoryExporter._remove_snapshot_metadata(Path(directory))
 
                 self.assertEqual(name in retained_names, path.exists(), name)
+
+    def test_snapshot_cleanup_retries_read_only_git_metadata(self) -> None:
+        retried: list[str] = []
+
+        def remove(path: str) -> None:
+            retried.append(path)
+
+        with patch("gitlab_tools.commands.repositories.exporter.os.chmod") as chmod:
+            RepositoryExporter._retry_remove_read_only(remove, "pack.idx", (PermissionError, PermissionError(), None))
+
+        chmod.assert_called_once_with("pack.idx", stat.S_IWRITE | stat.S_IREAD)
+        self.assertEqual(["pack.idx"], retried)
 
     def test_exporter_rejects_update_with_snapshot_when_constructed_directly(self) -> None:
         with self.assertRaisesRegex(ValueError, "working-tree"):
