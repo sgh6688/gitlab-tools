@@ -1,17 +1,25 @@
-# Repository 源码导出目录
+# Repository 源码导出根目录；取值：本机合法目录路径。
 output_dir=D:\Downloads\ExportedByGitLabTools\Repositories
 
-# 默认导出范围，逗号分隔；projects 和 groups 可同时配置。
-# project 支持 ID、完整 group/project 路径或唯一的精确项目名。
+# 默认导出范围；projects 和 groups 可同时配置，多个值用英文逗号分隔，不使用时留空。
+# projects 取值：项目 ID、完整 group/project 路径或唯一的精确项目名。
 projects=dept/platform-group/project-a,dept/platform-group/project-b
-# group 支持 ID 或完整路径。
+# groups 取值：群组 ID 或完整群组路径。
 groups=dept/shared-components
 
-# group 导出时是否包含所有子组中的项目。
+# 导出 group 时是否包含所有子组项目；取值：true/false、yes/no、on/off、1/0；默认：true。
 include_subgroups=true
 
-# clone 协议：http 或 ssh。
+# clone 协议；取值：http、ssh；默认：http。
+# ssh 仅适用于当前机器已配置并验证 GitLab SSH Key 的情况。
 clone_protocol=http
 
-# 已存在目标目录时：skip（跳过）、update（安全 fast-forward）、fail（记为失败）。
+# 输出内容模式；取值：snapshot、working-tree；默认：snapshot。
+# snapshot：只保留项目文件，递归删除 .git/.svn/.hg/.bzr/CVS、__MACOSX、.DS_Store、Thumbs.db、desktop.ini 等元数据。
+# working-tree：保留 .git，可继续使用 Git 命令；existing=update 时必须选择此值。
+# 向后兼容：旧配置未填写 output_mode 但 existing=update 时，会自动按 working-tree 处理。
+output_mode=snapshot
+
+# 目标目录已存在时的处理方式；取值：skip、update、fail；默认：skip。
+# skip：跳过；update：安全 fast-forward，仅支持 output_mode=working-tree；fail：记录失败。
 existing=skip

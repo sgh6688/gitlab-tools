@@ -57,6 +57,8 @@ class CommandLineTests(unittest.TestCase):
             "--output-dir",
             "--include-subgroups",
             "--existing",
+            "--clone-protocol",
+            "--output-mode",
         ):
             self.assertIn(option, result.stdout)
 

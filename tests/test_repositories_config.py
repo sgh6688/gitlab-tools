@@ -72,7 +72,8 @@ class RepositoryExportConfigTests(unittest.TestCase):
                 "projects=file-group/file-project\n"
                 "groups=file-group\n"
                 "include_subgroups=false\n"
-                "existing=fail\n",
+                "existing=fail\n"
+                "output_mode=working-tree\n",
                 encoding="utf-8",
             )
 
@@ -90,6 +91,36 @@ class RepositoryExportConfigTests(unittest.TestCase):
         self.assertEqual(Path("cli-output"), config.output_dir)
         self.assertTrue(config.include_subgroups)
         self.assertEqual("update", config.existing)
+        self.assertEqual("working-tree", config.output_mode)
+
+    def test_repository_output_mode_defaults_to_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "repositories.config.txt"
+            path.write_text("projects=team/project-a\n", encoding="utf-8")
+
+            config = load_repository_config(path)
+
+        self.assertEqual("snapshot", config.output_mode)
+
+    def test_update_requires_working_tree_output_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "repositories.config.txt"
+            path.write_text(
+                "projects=team/project-a\nexisting=update\noutput_mode=snapshot\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "working-tree"):
+                load_repository_config(path)
+
+    def test_legacy_update_config_without_output_mode_keeps_working_tree_behavior(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "repositories.config.txt"
+            path.write_text("projects=team/project-a\nexisting=update\n", encoding="utf-8")
+
+            config = load_repository_config(path)
+
+        self.assertEqual("working-tree", config.output_mode)
 
     def test_file_targets_are_used_when_cli_has_no_targets(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import base64
+import ctypes
+import errno
 import logging
 import os
 import subprocess
 import tempfile
 import threading
 import unittest
+from contextlib import nullcontext
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
@@ -52,6 +55,64 @@ def quiet_logger() -> logging.Logger:
 
 
 class RepositoryExporterTests(unittest.TestCase):
+    def test_snapshot_cleanup_uses_exact_metadata_names(self) -> None:
+        directory_names = {".git", ".svn", ".hg", ".bzr", "CVS", "__MACOSX"}
+        removed_names = directory_names | {".DS_Store", "Thumbs.db", "desktop.ini"}
+        retained_names = {"cvs", "__macosx", ".ds_store", "thumbs.DB", "Desktop.ini"}
+
+        for name in removed_names | retained_names:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / name
+                if name in directory_names or name in {"cvs", "__macosx"}:
+                    path.mkdir()
+                else:
+                    path.write_text("content", encoding="utf-8")
+
+                RepositoryExporter._remove_snapshot_metadata(Path(directory))
+
+                self.assertEqual(name in retained_names, path.exists(), name)
+
+    def test_exporter_rejects_update_with_snapshot_when_constructed_directly(self) -> None:
+        with self.assertRaisesRegex(ValueError, "working-tree"):
+            RepositoryExporter(
+                RepositoryExportConfig(
+                    output_dir=Path("export"),
+                    projects=["team/tool"],
+                    existing="update",
+                    output_mode="snapshot",
+                ),
+                GitLabConfig("https://gitlab.example.com"),
+                quiet_logger(),
+                FakeRepositoryApi({}, {}),
+            )
+
+    def test_linux_rename_no_replace_uses_atomic_renameat2(self) -> None:
+        calls: list[tuple[bytes, bytes, int]] = []
+
+        class FakeLibc:
+            def renameat2(self, old_dir_fd: int, source: bytes, new_dir_fd: int, destination: bytes, flags: int) -> int:
+                self.old_dir_fd = old_dir_fd
+                self.new_dir_fd = new_dir_fd
+                calls.append((source, destination, flags))
+                return 0
+
+        with patch("gitlab_tools.commands.repositories.exporter.sys.platform", "linux"):
+            with patch("gitlab_tools.commands.repositories.exporter.ctypes.CDLL", return_value=FakeLibc()):
+                RepositoryExporter._rename_no_replace(Path("source"), Path("destination"))
+
+        self.assertEqual([(b"source", b"destination", 1)], calls)
+
+    def test_linux_rename_no_replace_propagates_existing_destination(self) -> None:
+        class FakeLibc:
+            def renameat2(self, *_args: object) -> int:
+                ctypes.set_errno(errno.EEXIST)
+                return -1
+
+        with patch("gitlab_tools.commands.repositories.exporter.sys.platform", "linux"):
+            with patch("gitlab_tools.commands.repositories.exporter.ctypes.CDLL", return_value=FakeLibc()):
+                with self.assertRaises(FileExistsError):
+                    RepositoryExporter._rename_no_replace(Path("source"), Path("destination"))
+
     def test_git_auth_header_contains_real_basic_credentials(self) -> None:
         config = RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"])
         exporter = RepositoryExporter(
@@ -323,10 +384,30 @@ class RepositoryExporterTests(unittest.TestCase):
         subprocess.run(["git", "-C", str(source), "commit", "-q", "-m", "initial"], check=True)
         return source
 
-    def test_project_is_cloned_as_working_tree_under_namespace_path(self) -> None:
+    def test_project_is_exported_as_clean_snapshot_under_namespace_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = self.create_source_repository(root)
+            (source / ".gitignore").write_text("build/\n", encoding="utf-8")
+            (source / ".gitattributes").write_text("*.txt text\n", encoding="utf-8")
+            github = source / ".github"
+            github.mkdir()
+            (github / "workflow.yml").write_text("name: test\n", encoding="utf-8")
+            (source / ".DS_Store").write_text("metadata", encoding="utf-8")
+            nested = source / "nested"
+            nested.mkdir()
+            (nested / "Thumbs.db").write_text("metadata", encoding="utf-8")
+            svn_metadata = nested / ".svn"
+            svn_metadata.mkdir()
+            (svn_metadata / "entries").write_text("metadata", encoding="utf-8")
+            subprocess.run(
+                [
+                    "git", "-C", str(source), "add", ".gitignore", ".gitattributes",
+                    ".github/workflow.yml", ".DS_Store", "nested/Thumbs.db", "nested/.svn",
+                ],
+                check=True,
+            )
+            subprocess.run(["git", "-C", str(source), "commit", "-q", "-m", "metadata fixtures"], check=True)
             project = {
                 "id": 7,
                 "path_with_namespace": "team/platform/sub/tool",
@@ -339,9 +420,50 @@ class RepositoryExporterTests(unittest.TestCase):
 
             destination = root / "export" / "team" / "platform" / "sub" / "tool"
             self.assertEqual("repository content\n", (destination / "README.md").read_text(encoding="utf-8"))
-            self.assertTrue((destination / ".git").is_dir())
+            self.assertFalse((destination / ".git").exists())
+            self.assertFalse((destination / ".DS_Store").exists())
+            self.assertFalse((destination / "nested" / "Thumbs.db").exists())
+            self.assertFalse((destination / "nested" / ".svn").exists())
+            self.assertEqual("build/\n", (destination / ".gitignore").read_text(encoding="utf-8"))
+            self.assertEqual("*.txt text\n", (destination / ".gitattributes").read_text(encoding="utf-8"))
+            self.assertEqual("name: test\n", (destination / ".github" / "workflow.yml").read_text(encoding="utf-8"))
             self.assertEqual(1, stats.cloned)
             self.assertEqual(0, stats.failed)
+
+    def test_working_tree_output_mode_preserves_git_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = self.create_source_repository(root)
+            project = {"id": 7, "path_with_namespace": "team/tool", "http_url_to_repo": source.as_uri()}
+            config = RepositoryExportConfig(
+                output_dir=root / "export", projects=["team/tool"], output_mode="working-tree"
+            )
+            api = FakeRepositoryApi({"team/tool": project}, {})
+
+            stats = RepositoryExporter(config, GitLabConfig("https://gitlab.example.com"), quiet_logger(), api).run()
+
+            self.assertTrue((root / "export" / "team" / "tool" / ".git").is_dir())
+            self.assertEqual(1, stats.cloned)
+
+    def test_ssh_snapshot_path_also_removes_git_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = self.create_source_repository(root)
+            project = {"id": 7, "path_with_namespace": "team/tool", "ssh_url_to_repo": str(source)}
+            config = RepositoryExportConfig(
+                output_dir=root / "export", projects=["team/tool"], clone_protocol="ssh"
+            )
+            api = FakeRepositoryApi({"team/tool": project}, {})
+            exporter = RepositoryExporter(
+                config, GitLabConfig("https://gitlab.example.com"), quiet_logger(), api
+            )
+            with patch.object(exporter, "_clone_url", return_value=str(source)):
+                stats = exporter.run()
+
+            destination = root / "export" / "team" / "tool"
+            self.assertEqual("repository content\n", (destination / "README.md").read_text(encoding="utf-8"))
+            self.assertFalse((destination / ".git").exists())
+            self.assertEqual(1, stats.cloned)
 
     def test_direct_and_group_projects_are_deduplicated(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -453,7 +575,9 @@ class RepositoryExporterTests(unittest.TestCase):
                 "http_url_to_repo": source.as_uri(),
             }
             api = FakeRepositoryApi({"team/tool": project}, {})
-            first_config = RepositoryExportConfig(output_dir=root / "export", projects=["team/tool"])
+            first_config = RepositoryExportConfig(
+                output_dir=root / "export", projects=["team/tool"], output_mode="working-tree"
+            )
             RepositoryExporter(first_config, GitLabConfig("https://gitlab.example.com"), quiet_logger(), api).run()
 
             destination = root / "export" / "team" / "tool"
@@ -479,6 +603,7 @@ class RepositoryExporterTests(unittest.TestCase):
                 output_dir=root / "export",
                 projects=["team/tool"],
                 existing="update",
+                output_mode="working-tree",
             )
 
             stats = RepositoryExporter(
@@ -491,6 +616,45 @@ class RepositoryExporterTests(unittest.TestCase):
             self.assertEqual("updated content\n", (destination / "README.md").read_text(encoding="utf-8"))
             self.assertEqual(1, stats.updated)
             self.assertEqual(0, stats.failed)
+
+    def test_ssh_update_runs_all_git_commands_through_opened_directory_handle(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination = root / "export" / "team" / "tool"
+            (destination / ".git").mkdir(parents=True)
+            project = {
+                "id": 7,
+                "path_with_namespace": "team/tool",
+                "ssh_url_to_repo": "git@gitlab.example.com:team/tool.git",
+            }
+            exporter = RepositoryExporter(
+                RepositoryExportConfig(
+                    output_dir=root / "export", projects=["team/tool"], existing="update",
+                    output_mode="working-tree", clone_protocol="ssh",
+                ),
+                GitLabConfig("https://gitlab.example.com"), quiet_logger(), FakeRepositoryApi({}, {}),
+            )
+            exporter._preflight_resolved_destinations["7"] = destination.resolve()
+            commands: list[tuple[list[str], tuple[int, ...], int | None]] = []
+
+            def fake_git(arguments: list[str], **kwargs: object) -> str:
+                commands.append((arguments, kwargs.get("pass_fds", ()), kwargs.get("working_directory_fd")))
+                if "get-url" in arguments:
+                    return "git@gitlab.example.com:team/tool.git\n"
+                if "symbolic-ref" in arguments:
+                    return "main\n"
+                return ""
+
+            with patch.object(exporter, "_opened_git_directory", return_value=nullcontext((".", (42,)))):
+                with patch.object(exporter, "_run_git", side_effect=fake_git):
+                    result = exporter._export_project(project)
+
+            self.assertEqual("updated", result)
+            self.assertEqual(3, len(commands))
+            for arguments, command_pass_fds, working_directory_fd in commands:
+                self.assertEqual(["-C", "."], arguments[:2])
+                self.assertEqual((42,), command_pass_fds)
+                self.assertEqual(42, working_directory_fd)
 
     def test_update_hook_cannot_read_authenticated_git_environment(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -511,7 +675,12 @@ class RepositoryExporterTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(source), "add", "README.md"], check=True)
             subprocess.run(["git", "-C", str(source), "commit", "-q", "-m", "update"], check=True)
             exporter = RepositoryExporter(
-                RepositoryExportConfig(output_dir=root, projects=["team/tool"], existing="update"),
+                RepositoryExportConfig(
+                    output_dir=root,
+                    projects=["team/tool"],
+                    existing="update",
+                    output_mode="working-tree",
+                ),
                 GitLabConfig("https://gitlab.example.com", token="secret-token"),
                 quiet_logger(),
                 FakeRepositoryApi({}, {}),
@@ -588,7 +757,9 @@ class RepositoryExporterTests(unittest.TestCase):
             subprocess.run(["git", "clone", "-q", str(first_source), str(second_source)], check=True)
             project = {"id": 7, "path_with_namespace": "team/tool", "http_url_to_repo": first_source.as_uri()}
             api = FakeRepositoryApi({"team/tool": project}, {})
-            initial = RepositoryExportConfig(output_dir=root / "export", projects=["team/tool"])
+            initial = RepositoryExportConfig(
+                output_dir=root / "export", projects=["team/tool"], output_mode="working-tree"
+            )
             RepositoryExporter(initial, GitLabConfig("https://gitlab.example.com"), quiet_logger(), api).run()
 
             changed_project = {"id": 7, "path_with_namespace": "team/tool", "http_url_to_repo": str(second_source)}
@@ -596,6 +767,7 @@ class RepositoryExporterTests(unittest.TestCase):
                 output_dir=root / "export",
                 projects=["team/tool"],
                 existing="update",
+                output_mode="working-tree",
             )
 
             stats = RepositoryExporter(

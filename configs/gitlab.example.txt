@@ -1,15 +1,20 @@
-# GitLab 根地址，不要带 /api/v4
-# 这是 repositories export 等功能共用的连接配置默认文件。
+# GitLab 根地址；取值：http://... 或 https://...；不要带 /api/v4、用户名或密码。
+# 仅支持 HTTP 的内网站点必须保持 http://，不要改成不存在的 HTTPS。
 gitlab_url=https://gitlab.example.com
 
-# Token 可直接填写；更推荐保持为空并通过环境变量提供。
+# GitLab Personal Access Token。可直接填写；更推荐留空并通过 token_env_var 指定的环境变量提供。
 token=
+# Token 环境变量名；取值：合法环境变量名；默认：GITLAB_TOKEN。
 token_env_var=GITLAB_TOKEN
 
-# Git HTTP Basic 认证用户名。保留 oauth2 时自动查询 Token 所属真实用户名；也可直接填写真实用户名。
+# Git HTTP Basic 用户名；取值：oauth2 或 Token 所属真实用户名；默认：oauth2。
+# oauth2 表示自动通过同一个 Token 查询 /api/v4/user 并使用返回的真实 username；显式用户名则直接使用。
 git_http_username=oauth2
 
-# 通用 API 请求配置
+# API 请求超时秒数；取值：大于 0 的整数；默认：30。
 request_timeout_seconds=30
+# API 每页记录数；取值：1-100 的整数；默认：100。
 page_size=100
+# 是否校验 HTTPS 证书；取值：true/false、yes/no、on/off、1/0；默认：true。
+# HTTP 站点不受此项影响；除非使用可信内网自签名证书且确有需要，否则不要关闭。
 verify_ssl=true

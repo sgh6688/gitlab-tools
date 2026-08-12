@@ -1,18 +1,23 @@
-# GitLab 根地址，不要带 /api/v4
+# GitLab 根地址；取值：http://... 或 https://...；不要带 /api/v4、用户名或密码。
 gitlab_url=https://gitlab.example.com
 
-# Token 可直接填写；更推荐保持为空并通过环境变量提供。
+# GitLab Personal Access Token。可直接填写；更推荐留空并通过 token_env_var 指定的环境变量提供。
 token=
+# Token 环境变量名；取值：合法环境变量名；默认：GITLAB_TOKEN。
 token_env_var=GITLAB_TOKEN
 
-# Milestone 和 Issue Markdown 导出目录
+# Milestone 和 Issue Markdown 导出目录；取值：本机合法目录路径。
 output_dir=D:\Downloads\ExportedByGitLabTools\Milestones
 
-# 通用 API 请求配置
+# API 请求超时秒数；取值：大于 0 的整数；默认：30。
 request_timeout_seconds=30
+# API 每页记录数；取值：1-100 的整数；默认：100。
 page_size=100
+# 是否校验 HTTPS 证书；取值：true/false、yes/no、on/off、1/0；默认：true。
 verify_ssl=true
 
-# 逗号分隔，留空表示不启用该类目标。
+# 导出范围；groups 和 projects 可同时填写，多个值用英文逗号分隔，不使用时留空。
+# groups 取值：群组 ID 或完整群组路径。
 groups=dept/platform-group
+# projects 取值：项目 ID 或完整 group/project 路径。
 projects=dept/platform-group/project-a

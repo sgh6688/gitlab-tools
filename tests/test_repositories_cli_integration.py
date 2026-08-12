@@ -115,16 +115,8 @@ class RepositoryCliIntegrationTests(unittest.TestCase):
 
             self.assertEqual(0, result.returncode, result.stderr)
             destination = output / "team" / "tool"
-            self.assertTrue((destination / ".git").is_dir())
+            self.assertFalse((destination / ".git").exists())
             self.assertEqual("integration\n", (destination / "README.md").read_text(encoding="utf-8"))
-            remote = subprocess.run(
-                ["git", "-C", str(destination), "remote", "get-url", "origin"],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.strip()
-            self.assertEqual(f"http://127.0.0.1:{server.server_port}/team/tool.git", remote)
-            self.assertNotIn(expected_token, remote)
 
     def create_source_repository(self, directory: Path) -> Path:
         source = directory / "source"

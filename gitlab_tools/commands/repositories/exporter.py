@@ -6,6 +6,7 @@ import errno
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,6 +21,10 @@ from ...common.gitlab_api import GitLabClient, GitLabHttpError, GitLabProtocolEr
 from ...common.utils import ensure_directory, slugify_windows_name
 from .api import RepositoryApi, RepositoryTargetError
 from .config import RepositoryExportConfig
+
+
+SNAPSHOT_METADATA_DIRECTORIES = {".git", ".hg", ".svn", ".bzr", "CVS", "__MACOSX"}
+SNAPSHOT_METADATA_FILES = {".DS_Store", "Thumbs.db", "desktop.ini"}
 
 
 @dataclass(slots=True)
@@ -51,6 +56,8 @@ class RepositoryExporter:
         logger: logging.Logger,
         api: RepositoryProjectApi | None = None,
     ) -> None:
+        if config.existing == "update" and config.output_mode != "working-tree":
+            raise ValueError("existing=update 要求 output_mode=working-tree，以保留更新所需的 .git 元数据。")
         self.config = config
         self.gitlab_config = gitlab_config
         self.logger = logger
@@ -202,25 +209,36 @@ class RepositoryExporter:
                 raise ValueError(f"existing=update 但目标不是 Git 工作区: {destination}")
             self._assert_destination_unchanged(project, destination)
             clone_url = self._clone_url(project)
-            origin_url = self._run_git(["-C", str(destination), "remote", "get-url", "origin"]).strip()
-            if self._normalize_clone_url(origin_url) != self._normalize_clone_url(clone_url):
-                raise ValueError(f"existing=update 但 origin 与目标 project 不匹配: {destination}")
-            branch = self._run_git(["-C", str(destination), "symbolic-ref", "--short", "HEAD"]).strip()
-            if not branch:
-                raise ValueError(f"existing=update 无法确定当前分支: {destination}")
-            if self.config.clone_protocol == "ssh":
-                self.logger.info("更新 project: %s -> %s", display_path, destination)
-                self._run_git(["-C", str(destination), "pull", "--ff-only", "--no-rebase", "--", "origin", branch])
-                return "updated"
             with self._opened_git_directory(destination) as (git_directory, pass_fds):
+                working_directory_fd = pass_fds[0] if pass_fds else None
+                git_options = {
+                    "pass_fds": pass_fds,
+                    "working_directory_fd": working_directory_fd,
+                }
+                origin_url = self._run_git(
+                    ["-C", git_directory, "remote", "get-url", "origin"], **git_options
+                ).strip()
+                if self._normalize_clone_url(origin_url) != self._normalize_clone_url(clone_url):
+                    raise ValueError(f"existing=update 但 origin 与目标 project 不匹配: {destination}")
+                branch = self._run_git(
+                    ["-C", git_directory, "symbolic-ref", "--short", "HEAD"], **git_options
+                ).strip()
+                if not branch:
+                    raise ValueError(f"existing=update 无法确定当前分支: {destination}")
                 self.logger.info("更新 project: %s -> %s", display_path, destination)
-                self._update_from_isolated_mirror(
-                    clone_url,
-                    branch,
-                    git_directory=git_directory,
-                    pass_fds=pass_fds,
-                    working_directory_fd=pass_fds[0] if pass_fds else None,
-                )
+                if self.config.clone_protocol == "ssh":
+                    self._run_git(
+                        ["-C", git_directory, "pull", "--ff-only", "--no-rebase", "--", "origin", branch],
+                        **git_options,
+                    )
+                else:
+                    self._update_from_isolated_mirror(
+                        clone_url,
+                        branch,
+                        git_directory=git_directory,
+                        pass_fds=pass_fds,
+                        working_directory_fd=working_directory_fd,
+                    )
             return "updated"
 
         clone_url = self._clone_url(project)
@@ -232,6 +250,23 @@ class RepositoryExporter:
         else:
             self._clone_via_isolated_mirror(project, clone_url, destination)
         return "cloned"
+
+    @staticmethod
+    def _remove_snapshot_metadata(root: Path) -> None:
+        for current_root, directory_names, file_names in os.walk(root, topdown=True, followlinks=False):
+            current = Path(current_root)
+            for name in list(directory_names):
+                if name not in SNAPSHOT_METADATA_DIRECTORIES:
+                    continue
+                path = current / name
+                if path.is_symlink():
+                    path.unlink()
+                else:
+                    shutil.rmtree(path)
+                directory_names.remove(name)
+            for name in file_names:
+                if name in SNAPSHOT_METADATA_FILES:
+                    (current / name).unlink()
 
     def _clone_via_isolated_mirror(
         self,
@@ -253,6 +288,8 @@ class RepositoryExporter:
             )
             self._run_git(["clone", "--no-local", "--", str(mirror), str(staged_worktree)])
             self._run_git(["-C", str(staged_worktree), "remote", "set-url", "origin", clone_url])
+            if self.config.output_mode == "snapshot":
+                self._remove_snapshot_metadata(staged_worktree)
             self._assert_destination_unchanged(project, destination)
             self._rename_no_replace(staged_worktree, destination)
             try:
@@ -488,6 +525,27 @@ class RepositoryExporter:
                 error_number = ctypes.get_errno()
                 raise OSError(error_number, os.strerror(error_number), str(destination))
             return
+        if sys.platform.startswith("linux"):
+            at_fdcwd = -100
+            rename_noreplace = 1
+            libc = ctypes.CDLL(None, use_errno=True)
+            try:
+                renameat2 = libc.renameat2
+            except AttributeError as exc:
+                raise OSError(errno.ENOTSUP, "当前 Linux 运行库不支持原子 no-replace rename") from exc
+            result = renameat2(
+                at_fdcwd,
+                os.fsencode(source),
+                at_fdcwd,
+                os.fsencode(destination),
+                rename_noreplace,
+            )
+            if result != 0:
+                error_number = ctypes.get_errno()
+                raise OSError(error_number, os.strerror(error_number), str(destination))
+            return
+        if os.name != "nt":
+            raise OSError(errno.ENOTSUP, f"当前平台不支持原子 no-replace rename: {sys.platform}")
         if destination.exists() or destination.is_symlink():
             raise FileExistsError(errno.EEXIST, "目标路径已存在", str(destination))
         os.rename(source, destination)
@@ -512,5 +570,19 @@ class RepositoryExporter:
         default_port = 443 if scheme == "https" else 80
         port_suffix = "" if port == default_port else f":{port}"
         return f"{scheme}://{host}{port_suffix}/"
+
     def _clone_ssh(self, project: dict[str, Any], clone_url: str, destination: Path) -> None:
-        self._run_git(["clone", "--", clone_url, str(destination)])
+        output_root = self.config.output_dir.expanduser().resolve()
+        with tempfile.TemporaryDirectory(prefix=".gitlab-tools-ssh-", dir=output_root) as temporary_directory:
+            staged_worktree = Path(temporary_directory) / "worktree"
+            self._run_git(["clone", "--", clone_url, str(staged_worktree)])
+            if self.config.output_mode == "snapshot":
+                self._remove_snapshot_metadata(staged_worktree)
+            self._assert_destination_unchanged(project, destination)
+            self._rename_no_replace(staged_worktree, destination)
+            try:
+                self._assert_destination_unchanged(project, destination)
+            except Exception:
+                if destination.exists() and not staged_worktree.exists():
+                    os.rename(destination, staged_worktree)
+                raise

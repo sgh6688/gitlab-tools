@@ -31,7 +31,7 @@ def register_parser(commands: Any) -> None:
     export_parser = actions.add_parser(
         "export",
         help="Clone projects while preserving their GitLab namespace paths.",
-        description="Export one project or all projects under a group as normal Git working trees.",
+        description="Export one project or all projects under a group as clean snapshots or Git working trees.",
     )
     export_parser.add_argument(
         "--gitlab-config",
@@ -68,6 +68,11 @@ def register_parser(commands: Any) -> None:
         "--clone-protocol",
         choices=("http", "ssh"),
         help="Clone with the GitLab HTTP or SSH URL. Default: http.",
+    )
+    export_parser.add_argument(
+        "--output-mode",
+        choices=("snapshot", "working-tree"),
+        help="Export a clean source snapshot or retain Git metadata. Default: snapshot.",
     )
     export_parser.set_defaults(handler=run_export)
 
@@ -149,6 +154,7 @@ def run_export(args: argparse.Namespace) -> int:
             include_subgroups=args.include_subgroups,
             existing=args.existing,
             clone_protocol=args.clone_protocol,
+            output_mode=args.output_mode,
         )
         logger.info("Repository 导出启动，GitLab 配置: %s", gitlab_config_path)
         logger.info("Repository 功能配置: %s", feature_config_path or "未使用（命令行参数）")

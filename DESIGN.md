@@ -16,14 +16,14 @@ repositories export
 repositories init-config
 ```
 
-Repository 功能导出普通 Git 工作树，不压缩；支持单个 project 和 group 批量导出。
+Repository 功能默认导出不压缩的纯项目文件快照，也可保留普通 Git 工作树；支持单个 project 和 group 批量导出。
 
 ## 2. 配置模型
 
 配置分为两层：
 
 - `gitlab.config.txt`：GitLab URL、Token、Git HTTP 用户名、SSL、超时、分页等连接参数；
-- `repositories.config.txt`：目标、输出目录、subgroup 和已存在目录策略。
+- `repositories.config.txt`：目标、输出目录、subgroup、输出模式和已存在目录策略。
 
 优先级：内置默认值 < 功能配置文件 < 命令行。
 
@@ -126,10 +126,12 @@ team/platform/sub/project
 git clone -- <http_url_to_repo> <destination>
 ```
 
+默认 `output_mode=snapshot`。clone 在隔离暂存区完成后，递归移除 `.git/.svn/.hg/.bzr/CVS/__MACOSX` 目录和 `.DS_Store/Thumbs.db/desktop.ini` 文件，再安装到目标路径；`.gitignore`、`.gitattributes`、`.github` 等项目内容不属于剔除范围。`output_mode=working-tree` 保留完整工作树。
+
 已存在目录策略：
 
 - `skip`：不修改；
-- `update`：必须含 `.git`；校验 `origin` 后，在隔离 bare 仓库获取目标分支，并在无 Token 环境中校验提交后执行 fast-forward merge；
+- `update`：必须配置 `output_mode=working-tree` 且目标含 `.git`；校验 `origin` 后，HTTP 模式在隔离 bare 仓库认证获取目标分支，并在无 Token 环境中校验提交后执行 fast-forward merge；SSH 模式在校验后的工作区中执行仅允许 fast-forward 的 pull；
 - `fail`：记录失败。
 
 Git 命令使用参数数组，不使用 shell。Token 不出现在命令行参数中。设置 `GIT_TERMINAL_PROMPT=0`，避免无人值守任务因凭据提示永久等待。
@@ -140,7 +142,7 @@ Git 命令使用参数数组，不使用 shell。Token 不出现在命令行参�
 
 ## 8. 当前边界
 
-- 导出标准 clone 的默认检出分支和 Git 历史；
+- `snapshot` 导出默认检出分支的项目文件，不保留 Git 历史；`working-tree` 保留标准 clone 和 Git 历史；
 - 不递归初始化 submodule；
 - Git LFS 依赖目标机器环境；
 - 不导出 Wiki、Artifact、Registry；
@@ -161,4 +163,4 @@ Git 命令使用参数数组，不使用 shell。Token 不出现在命令行参�
 - 路径穿越拒绝；
 - 符号链接逃逸、Windows 路径碰撞和错误 origin 拒绝；
 - wheel 内配置模板及 `init-config` 防覆盖；
-- 使用真实临时 Git 仓库验证普通工作树 clone 和命名空间目录。
+- 使用真实临时 Git 仓库验证纯文件快照、元数据剔除、可选工作树和命名空间目录。

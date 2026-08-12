@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitlab-tools"
-version = "0.3.4"
-description = "Export GitLab milestones and issues to Markdown, and clone projects or groups as Git working trees"
+version = "0.3.5"
+description = "Export GitLab milestones and issues to Markdown, and projects or groups as clean source snapshots"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"

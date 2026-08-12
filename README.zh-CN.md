@@ -7,9 +7,9 @@
 
 [English](README.md) | 简体中文
 
-![gitlab-tools：将 GitLab Milestone 和 Issue 导出为 Markdown，将项目和群组导出为 Git 工作区](assets/social-preview.png)
+![gitlab-tools：将 GitLab Milestone 和 Issue 导出为 Markdown，将项目和群组导出为纯项目快照或 Git 工作区](assets/social-preview.png)
 
-`gitlab-tools` 可将 GitLab group/project 的 Milestone 和 Issue 导出为 Markdown，也可将 project 或整个 group 导出为普通 Git 工作区。工具面向 Windows 和离线环境，Python 运行时不依赖第三方包。
+`gitlab-tools` 可将 GitLab group/project 的 Milestone 和 Issue 导出为 Markdown，也可将 project 或整个 group 默认导出为剔除 `.git` 等元数据的纯项目快照；需要继续使用 Git 命令时可选择完整 Git 工作区。工具面向 Windows 和离线环境，Python 运行时不依赖第三方包。
 
 第一次使用请直接阅读：[简明用户手册](USER_GUIDE.md)。手册完整覆盖 Milestone 和 Repository 两项功能，以及联网/断网安装。维护者发布 Wheel 时请阅读：[发布与离线交付说明](RELEASE.md)。
 
@@ -36,12 +36,13 @@ py -m gitlab_tools --help
 - `--group` 支持 group ID 或完整 group 路径。
 - group 默认包含所有 subgroup 中的 project，可用 `--no-include-subgroups` 关闭。
 - 每个项目使用 GitLab API 返回的 `http_url_to_repo`（或 `ssh_url_to_repo`）执行 Git clone。协议由 `clone_protocol` 控制。
-- 不压缩，保留完整 Git 工作区和 `.git` 目录。
+- 默认 `output_mode=snapshot`，不压缩，只保留项目文件并递归剔除 `.git/.svn/.hg/.bzr/CVS` 及常见系统元数据；`.gitignore`、`.github` 等项目文件保留。
+- 需要继续运行 Git 命令时可设为 `output_mode=working-tree`，保留完整 Git 工作区和 `.git`。
 - 输出路径保持完整 `path_with_namespace`。
 - 同一 project 同时被直接指定和被 group 枚举到时，只导出一次。
 - 单个 project 不存在、名称歧义、路径冲突或 clone 失败都不会中断其他目标；最终退出码为 `4` 并记录失败数。
 - Windows 文件名清理或截断后若两个项目映射到同一路径，将拒绝导出这两个项目，避免串库。
-- 输出路径按真实解析结果检测链接/目录联接别名碰撞；clone 先在隔离暂存区完成，再以不可覆盖、拒绝链接的原子操作安装，update 在支持的平台通过已打开的目录句柄操作，避免路径替换竞态。
+- 输出路径按真实解析结果检测链接/目录联接别名碰撞；clone 先在隔离暂存区完成，再以不可覆盖、拒绝链接的原子操作安装；在支持目录句柄的平台，HTTP 与 SSH update 的 origin 校验、分支读取和更新操作均固定到同一个已打开目录，避免路径替换竞态。
 
 例如 GitLab 项目为：
 
@@ -58,11 +59,11 @@ D:\Downloads\ExportedByGitLabTools\Repositories\
     platform\
       backend\
         service-a\
-          .git\
+          README.md
           ...
       frontend\
         web-a\
-          .git\
+          README.md
           ...
 ```
 
@@ -126,6 +127,7 @@ projects=dept/platform/project-a,dept/platform/project-b
 groups=dept/shared-components
 include_subgroups=true
 clone_protocol=http
+output_mode=snapshot
 existing=skip
 ```
 
@@ -134,7 +136,7 @@ existing=skip
 | 值 | 行为 |
 |---|---|
 | `skip` | 默认；目标目录存在时保持不动并跳过 |
-| `update` | 目标必须是 Git 工作区且 `origin` 与目标项目一致；先在隔离 bare 仓库认证获取当前分支，再在无 Token 环境中校验提交并执行 fast-forward merge，不跟随被修改的 upstream remote |
+| `update` | 仅适用于 `output_mode=working-tree`；目标必须是 Git 工作区且 `origin` 与目标项目一致；HTTP 模式在隔离 bare 仓库认证获取当前分支，再在无 Token 环境中校验并 fast-forward merge；SSH 模式在同一个已打开工作区中校验 origin/分支并执行 `pull --ff-only` |
 | `fail` | 目标存在时将该项目记为失败，继续处理其他项目 |
 
 ## 常用命令

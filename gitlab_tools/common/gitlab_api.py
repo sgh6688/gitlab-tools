@@ -70,7 +70,7 @@ class GitLabClient:
         final_url = self._append_query(url, params)
         headers = {
             "Accept": "application/json",
-            "User-Agent": "gitlab-tools/0.3.4",
+            "User-Agent": "gitlab-tools/0.3.5",
         }
         if self.token:
             headers["PRIVATE-TOKEN"] = self.token

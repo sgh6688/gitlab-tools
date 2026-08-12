@@ -7,16 +7,16 @@
 
 English | [简体中文](README.zh-CN.md)
 
-![gitlab-tools: GitLab milestones and issues to Markdown; projects and groups to Git working trees](assets/social-preview.png)
+![gitlab-tools: GitLab milestones and issues to Markdown; projects and groups to source snapshots or Git working trees](assets/social-preview.png)
 
-Export GitLab milestones and issues to Markdown, or clone projects and groups as ordinary Git working trees. The CLI works well on Windows, supports fully offline installation, and has no third-party Python runtime dependencies.
+Export GitLab milestones and issues to Markdown, or export projects and groups as clean source snapshots or ordinary Git working trees. The CLI works well on Windows, supports fully offline installation, and has no third-party Python runtime dependencies.
 
 ## What it does
 
 | Command | Result |
 |---|---|
 | `gitlab-tools milestones export` | Markdown files for group/project milestones and their issues |
-| `gitlab-tools repositories export` | Normal Git working trees for projects or every project in a group |
+| `gitlab-tools repositories export` | Clean source snapshots by default, or Git working trees, for projects or every project in a group |
 
 Repository export preserves each project's full GitLab namespace. Group export includes subgroups by default. HTTP and SSH clone are supported.
 
@@ -33,7 +33,7 @@ Requirements:
 Install the current Wheel directly from GitHub Releases:
 
 ```console
-python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.4/gitlab_tools-0.3.4-py3-none-any.whl"
+python -m pip install "https://github.com/sgh6688/gitlab-tools/releases/download/v0.3.5/gitlab_tools-0.3.5-py3-none-any.whl"
 ```
 
 Create editable configuration files and Windows launchers:
@@ -66,7 +66,7 @@ python -m gitlab_tools repositories export
 For air-gapped installation, download the Wheel on a connected machine, transfer it through an approved channel, then run:
 
 ```console
-python -m pip install --no-index ./gitlab_tools-0.3.4-py3-none-any.whl
+python -m pip install --no-index ./gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 The machine does not need internet access, but it still needs access to the target GitLab server when an export runs.
@@ -79,17 +79,17 @@ The [`examples/`](examples/) directory contains synthetic output with no real or
 - [Issue Markdown](examples/issue-example.md)
 - [Repository output tree](examples/repository-tree.txt)
 
-A repository export keeps normal working trees rather than creating archives:
+A repository export creates clean, unpacked source snapshots by default:
 
 ```text
 Repositories/
 └── example-org/
     └── platform/
         ├── api-service/
-        │   ├── .git/
+        │   ├── README.md
         │   └── ...
         └── web-client/
-            ├── .git/
+            ├── README.md
             └── ...
 ```
 
@@ -120,6 +120,7 @@ Initialization uses exclusive file creation and never overwrites an existing fil
 - Cross-origin API redirects are rejected; Git redirects do not receive the authentication header.
 - Repository output rejects traversal, link/junction aliases, Windows reserved names, and normalized path collisions.
 - Clone output is staged before installation; existing directories follow an explicit `skip`, `update`, or `fail` policy.
+- Snapshot output removes version-control metadata (`.git`, `.svn`, `.hg`, `.bzr`, `CVS`) and common OS metadata while retaining project files such as `.gitignore` and `.github`; `output_mode=working-tree` preserves `.git` when updates are required.
 - Logs and errors redact credential values.
 
 See [DESIGN.md](DESIGN.md) for the detailed design and trust boundaries.

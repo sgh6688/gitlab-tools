@@ -9,6 +9,7 @@ from ...common.config import parse_bool, parse_kv_config
 DEFAULT_OUTPUT_DIR = Path(r"D:\Downloads\ExportedByGitLabTools\Repositories")
 EXISTING_POLICIES = {"skip", "update", "fail"}
 CLONE_PROTOCOLS = {"http", "ssh"}
+OUTPUT_MODES = {"snapshot", "working-tree"}
 
 
 @dataclass(slots=True)
@@ -19,6 +20,7 @@ class RepositoryExportConfig:
     include_subgroups: bool = True
     existing: str = "skip"
     clone_protocol: str = "http"
+    output_mode: str = "snapshot"
 
 
 def load_config(
@@ -30,6 +32,7 @@ def load_config(
     include_subgroups: bool | None = None,
     existing: str | None = None,
     clone_protocol: str | None = None,
+    output_mode: str | None = None,
 ) -> RepositoryExportConfig:
     raw = parse_kv_config(config_path) if config_path is not None else {}
     file_projects = _parse_list(raw.get("projects", ""))
@@ -47,6 +50,18 @@ def load_config(
     resolved_clone_protocol = clone_protocol or raw.get("clone_protocol", "http").strip().lower() or "http"
     if resolved_clone_protocol not in CLONE_PROTOCOLS:
         raise ValueError("clone_protocol 必须是 http 或 ssh。")
+    configured_output_mode = output_mode if output_mode is not None else raw.get("output_mode")
+    resolved_output_mode = (
+        configured_output_mode.strip().lower()
+        if configured_output_mode is not None and configured_output_mode.strip()
+        else "working-tree"
+        if resolved_existing == "update"
+        else "snapshot"
+    )
+    if resolved_output_mode not in OUTPUT_MODES:
+        raise ValueError("output_mode 必须是 snapshot 或 working-tree。")
+    if resolved_existing == "update" and resolved_output_mode != "working-tree":
+        raise ValueError("existing=update 要求 output_mode=working-tree，以保留更新所需的 .git 元数据。")
 
     return RepositoryExportConfig(
         output_dir=Path(output_dir or raw.get("output_dir", str(DEFAULT_OUTPUT_DIR))),
@@ -59,6 +74,7 @@ def load_config(
         ),
         existing=resolved_existing,
         clone_protocol=resolved_clone_protocol,
+        output_mode=resolved_output_mode,
     )
 
 

@@ -104,7 +104,7 @@ py -m gitlab_tools <功能域> <动作> [参数]
 
 ### 验收标准
 
-1. 单 project 可导出为普通 Git 工作区；
+1. 单 project 默认可导出为剔除 `.git` 等元数据的纯项目快照，并可选导出为完整 Git 工作区；
 2. group 可分页枚举项目并保留 namespace 路径；
 3. subgroup 开关有效；
 4. project/group 结果可去重；

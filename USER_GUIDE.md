@@ -5,7 +5,7 @@
 | 功能 | 命令 | 输出 |
 |---|---|---|
 | 导出 Milestone | `milestones export` | Milestone 和 Issue 的 Markdown 文件 |
-| 导出项目源码 | `repositories export` | 可直接浏览和使用的普通 Git 工作区 |
+| 导出项目源码 | `repositories export` | 默认是不含 `.git` 等元数据的纯项目快照；也可选完整 Git 工作区 |
 
 下面按“检查环境、安装工具、选择功能、填写配置、执行导出”的顺序说明。示例以 Windows 为主。
 
@@ -65,13 +65,13 @@ Git-x.x.x-64-bit.exe
 工具通常以这个文件交付：
 
 ```text
-gitlab_tools-0.3.4-py3-none-any.whl
+gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 它是 Python Wheel 安装包，可以理解为 `gitlab-tools` 的离线安装包：
 
 - `gitlab_tools`：软件包名称。
-- `0.3.4`：版本号。
+- `0.3.5`：版本号。
 - `py3`：适用于 Python 3。
 - `none-any`：不依赖特定操作系统和 CPU。
 - `.whl`：Python 可直接安装的软件包格式。
@@ -90,7 +90,7 @@ py -m pip install "git+https://github.com/sgh6688/gitlab-tools.git@main"
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install .\gitlab_tools-0.3.4-py3-none-any.whl
+py -m pip install .\gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 ### 完全离线安装
@@ -105,7 +105,7 @@ D:\GitLabTools
 
 ```bat
 cd /d D:\GitLabTools
-py -m pip install --no-index .\gitlab_tools-0.3.4-py3-none-any.whl
+py -m pip install --no-index .\gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 `--no-index` 表示禁止 pip 访问互联网。
@@ -113,7 +113,7 @@ py -m pip install --no-index .\gitlab_tools-0.3.4-py3-none-any.whl
 重新安装同一版本：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.4-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 ### 检查安装结果
@@ -365,6 +365,7 @@ projects=dept/platform/project-a
 groups=
 include_subgroups=true
 clone_protocol=http
+output_mode=snapshot
 existing=skip
 ```
 
@@ -382,6 +383,7 @@ projects=
 groups=dept/platform
 include_subgroups=true
 clone_protocol=http
+output_mode=snapshot
 existing=skip
 ```
 
@@ -395,6 +397,7 @@ include_subgroups=false
 
 ```text
 clone_protocol=http
+output_mode=snapshot
 existing=skip
 ```
 
@@ -447,12 +450,19 @@ dept/platform/project-a
 D:\GitLabExport\Repositories\dept\platform\project-a
 ```
 
-里面是普通 Git 工作区：
+默认 `output_mode=snapshot`，里面是可直接归档或交付的纯项目文件：
 
 ```text
-.git
 README.md
 项目源码文件
+```
+
+工具会递归剔除 `.git`、`.svn`、`.hg`、`.bzr`、`CVS`、`__MACOSX` 等版本控制/打包元数据，以及 `.DS_Store`、`Thumbs.db`、`desktop.ini` 等系统杂项文件；不会删除 `.gitignore`、`.gitattributes`、`.github` 等项目自身有意义的文件。
+
+如果需要在导出目录中继续执行 Git 命令或使用增量更新，应配置：
+
+```text
+output_mode=working-tree
 ```
 
 日志位于配置文件同级目录：
@@ -468,10 +478,19 @@ repositories-export.log
 | 配置 | 行为 | 建议 |
 |---|---|---|
 | `skip` | 目录存在时跳过，不修改 | 首次使用推荐 |
-| `update` | 只做安全 fast-forward 更新 | 需要同步已有仓库时使用 |
+| `update` | 只做安全 fast-forward 更新 | 仅适用于 `output_mode=working-tree` |
 | `fail` | 目录存在时把该项目记为失败 | 要求输出目录必须为空时使用 |
 
 工具不会自动删除已有目录。
+
+`output_mode` 有两个值：
+
+| 配置 | 行为 | 建议 |
+|---|---|---|
+| `snapshot` | 默认；剔除 Git/系统元数据，只保留项目文件 | 归档、交付、代码审阅推荐 |
+| `working-tree` | 保留 `.git` 和正常 Git 工作区 | 需要 Git 命令或 `existing=update` 时使用 |
+
+为兼容旧配置，若未填写 `output_mode` 但已有 `existing=update`，工具会自动按 `working-tree` 处理；若明确配置 `output_mode=snapshot` 和 `existing=update`，则会提示配置冲突。
 
 ## 6.7 使用 SSH（可选）
 
@@ -504,7 +523,7 @@ Python 未安装或没有加入 PATH。重新安装并勾选 `Add Python to PATH
 重新安装 Wheel：
 
 ```bat
-py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.4-py3-none-any.whl
+py -m pip install --no-index --force-reinstall .\gitlab_tools-0.3.5-py3-none-any.whl
 ```
 
 ## HTTP 401 或 403
