@@ -133,6 +133,18 @@ class RepositoryExporterTests(unittest.TestCase):
         self.assertNotIn("pass_fds", options)
         self.assertNotIn("preexec_fn", options)
 
+    def test_uncreated_destination_is_resolved_from_existing_ancestor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            real_parent = root / "real-parent"
+            real_parent.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(real_parent, target_is_directory=True)
+
+            resolved = RepositoryExporter._resolve_with_existing_ancestor(alias / "new" / "project")
+
+            self.assertEqual(real_parent.resolve() / "new" / "project", resolved)
+
     def test_git_auth_header_contains_real_basic_credentials(self) -> None:
         config = RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"])
         exporter = RepositoryExporter(

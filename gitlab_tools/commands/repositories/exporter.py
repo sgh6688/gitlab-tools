@@ -114,9 +114,9 @@ class RepositoryExporter:
             slugify_windows_name(part, fallback_prefix=f"path-{index}")
             for index, part in enumerate(raw_parts, start=1)
         ]
-        output_root = self.config.output_dir.expanduser().resolve()
+        output_root = self._resolve_with_existing_ancestor(self.config.output_dir.expanduser())
         destination = output_root.joinpath(*safe_parts)
-        resolved_destination = destination.resolve(strict=False)
+        resolved_destination = self._resolve_with_existing_ancestor(destination)
         if resolved_destination != output_root and output_root not in resolved_destination.parents:
             raise ValueError(f"project 输出路径落在输出目录之外: {namespace_path!r}")
         return destination
@@ -175,7 +175,7 @@ class RepositoryExporter:
                 failures += 1
                 self.logger.error("project 路径无效: %s", exc)
                 continue
-            resolved_destination = destination.resolve(strict=False)
+            resolved_destination = self._resolve_with_existing_ancestor(destination)
             collision_key = os.path.normcase(str(resolved_destination)).casefold()
             destinations.setdefault(collision_key, []).append(project)
             resolved_destinations[self._project_key(project)] = resolved_destination
@@ -350,9 +350,22 @@ class RepositoryExporter:
 
     def _assert_destination_unchanged(self, project: dict[str, Any], destination: Path) -> None:
         expected = self._preflight_resolved_destinations.get(self._project_key(project))
-        current = destination.resolve(strict=False)
+        current = self._resolve_with_existing_ancestor(destination)
         if expected is None or current != expected:
             raise ValueError(f"project 输出路径在预检后发生变化，已拒绝操作: {destination}")
+
+    @staticmethod
+    def _resolve_with_existing_ancestor(path: Path) -> Path:
+        candidate = path.expanduser().absolute()
+        missing_parts: list[str] = []
+        while not candidate.exists() and not candidate.is_symlink():
+            parent = candidate.parent
+            if parent == candidate:
+                return path.expanduser().resolve(strict=False)
+            missing_parts.append(candidate.name)
+            candidate = parent
+        resolved = candidate.resolve(strict=True)
+        return resolved.joinpath(*reversed(missing_parts))
 
     def _verify_git(self) -> None:
         self._run_git(["--version"])
