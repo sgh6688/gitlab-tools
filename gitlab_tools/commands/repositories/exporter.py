@@ -374,11 +374,14 @@ class RepositoryExporter:
             "env": environment,
             "capture_output": True,
             "text": True,
+            "encoding": "utf-8",
+            "errors": "replace",
             "check": False,
-            "pass_fds": pass_fds,
         }
-        if working_directory_fd is not None:
-            run_options["preexec_fn"] = lambda: os.fchdir(working_directory_fd)
+        if os.name != "nt":
+            run_options["pass_fds"] = pass_fds
+            if working_directory_fd is not None:
+                run_options["preexec_fn"] = lambda: os.fchdir(working_directory_fd)
         result = subprocess.run(["git", *arguments], **run_options)
         if result.returncode != 0:
             detail = self._sanitize_git_detail((result.stderr or result.stdout).strip())

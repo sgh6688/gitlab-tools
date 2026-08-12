@@ -113,6 +113,26 @@ class RepositoryExporterTests(unittest.TestCase):
                 with self.assertRaises(FileExistsError):
                     RepositoryExporter._rename_no_replace(Path("source"), Path("destination"))
 
+    def test_windows_git_process_omits_posix_only_options_and_decodes_utf8(self) -> None:
+        exporter = RepositoryExporter(
+            RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"]),
+            GitLabConfig("https://gitlab.example.com"),
+            quiet_logger(),
+            FakeRepositoryApi({}, {}),
+        )
+        completed = subprocess.CompletedProcess(["git", "--version"], 0, "git 版本\n", "")
+
+        with patch("gitlab_tools.commands.repositories.exporter.os.name", "nt"):
+            with patch("gitlab_tools.commands.repositories.exporter.subprocess.run", return_value=completed) as run:
+                result = exporter._run_git(["--version"])
+
+        self.assertEqual("git 版本\n", result)
+        options = run.call_args.kwargs
+        self.assertEqual("utf-8", options["encoding"])
+        self.assertEqual("replace", options["errors"])
+        self.assertNotIn("pass_fds", options)
+        self.assertNotIn("preexec_fn", options)
+
     def test_git_auth_header_contains_real_basic_credentials(self) -> None:
         config = RepositoryExportConfig(output_dir=Path("export"), projects=["team/tool"])
         exporter = RepositoryExporter(
